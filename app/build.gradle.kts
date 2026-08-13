@@ -77,6 +77,8 @@ secrets {
 
 // Clean offline dependencies
 dependencies {
+  implementation("androidx.fragment:fragment-ktx:1.6.2")
+  implementation("androidx.biometric:biometric:1.2.0-alpha05")
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material.icons.core)
