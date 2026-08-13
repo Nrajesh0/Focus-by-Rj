@@ -1,0 +1,2 @@
+#!/bin/bash
+sed -i '/super.onCreate(savedInstanceState)/a\        \n        // Prevent Tapjacking and Clickjacking on this overlay Activity\n        window.decorView.filterTouchesWhenObscured = true\n        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {\n            window.setHideOverlayWindows(true)\n        }' app/src/main/java/com/focusbyrj/app/ui/screens/BlockActivity.kt
