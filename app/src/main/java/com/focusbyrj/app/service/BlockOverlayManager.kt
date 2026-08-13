@@ -26,6 +26,8 @@ object BlockOverlayManager {
     private var isShowing = false
 
     fun showOverlay(context: Context, packageName: String, quote: String, mode: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) return
+
         if (isShowing && currentPackageName == packageName) return
         
         hideOverlay() // Ensure previous is removed

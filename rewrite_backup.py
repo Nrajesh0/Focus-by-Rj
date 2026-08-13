@@ -1,4 +1,12 @@
-/*
+import re
+
+path = 'app/src/main/java/com/focusbyrj/app/ui/screens/BackupSecurityScreen.kt'
+with open(path, 'r') as f:
+    text = f.read()
+
+# I want to remove the sections for "Biometric Lock", "PIN Lock", and the "Change PIN" UI.
+
+new_content = """/*
  * Copyright (C) 2024-2026 Focus by Rj
  *
  * This program is free software: you can redistribute it and/or modify
@@ -151,3 +159,7 @@ fun SettingsCard(title: String, subtitle: String, icon: ImageVector, iconColor: 
         }
     }
 }
+"""
+
+with open(path, 'w') as f:
+    f.write(new_content)

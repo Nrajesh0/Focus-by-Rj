@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.remember
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -58,6 +58,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,7 +86,7 @@ import com.focusbyrj.app.ui.theme.AccentCyan
 import com.focusbyrj.app.ui.viewmodels.FocusViewModel
 import com.focusbyrj.app.ui.viewmodels.FocusViewModelFactory
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
   
   lateinit var viewModel: FocusViewModel
 

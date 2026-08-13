@@ -81,7 +81,11 @@ class FocusBlockerService : Service() {
             .setOngoing(true)
             .build()
 
-        startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
     private fun startAppMonitoringLoop() {
@@ -188,13 +192,11 @@ class FocusBlockerService : Service() {
 
 
     private fun getForegroundPackage(): String? {
-        // Log everything
-
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return currentForegroundPackage
         val now = System.currentTimeMillis()
-        val startTime = now - 1000 * 30 // 30 second sliding window
+        val startTime = now - 1000 * 60 * 60 // 1 hour sliding window to ensure we get daily stats if events fail
         
-        val events = usm.queryEvents(startTime, now)
+        val events = usm.queryEvents(now - 1000 * 30, now) // 30 seconds for precise events
         val event = UsageEvents.Event()
         var latestPackage: String? = null
         var latestTime = 0L
@@ -209,10 +211,9 @@ class FocusBlockerService : Service() {
             }
         }
         
-
         if (latestPackage != null) {
             currentForegroundPackage = latestPackage
-        } else if (currentForegroundPackage == null) {
+        } else {
             val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, now)
             if (!stats.isNullOrEmpty()) {
                 val mostRecent = stats.maxByOrNull { it.lastTimeUsed }
@@ -222,7 +223,6 @@ class FocusBlockerService : Service() {
             }
         }
         return currentForegroundPackage
-
     }
 
     private suspend fun checkAndBlockApp(packageName: String) {

@@ -73,7 +73,6 @@ dependencies {
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation("androidx.fragment:fragment-ktx:1.6.2")
-  implementation("androidx.biometric:biometric:1.2.0-alpha05")
 
   // Compose
   implementation(platform(libs.androidx.compose.bom))
