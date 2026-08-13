@@ -29,7 +29,7 @@ class FocusApplication : Application() {
             this,
             FocusDatabase::class.java,
             "focus_database"
-        ).fallbackToDestructiveMigration(true).build() 
+        ).fallbackToDestructiveMigration().build() 
     }
     
     val repository by lazy { AppRepository(database.appRestrictionDao(), database.scheduleDao()) }

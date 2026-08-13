@@ -49,7 +49,7 @@ class FocusBlockerService : Service() {
     override fun onCreate() {
         super.onCreate()
         db = Room.databaseBuilder(applicationContext, FocusDatabase::class.java, "focus_database")
-            .fallbackToDestructiveMigration(true)
+            .fallbackToDestructiveMigration()
             .build()
 
         startForegroundServiceNotification()
