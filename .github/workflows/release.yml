@@ -25,12 +25,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Generate Missing Wrapper Jar
-        run: gradle wrapper --gradle-version 8.9
-
-      - name: Make Gradlew Executable
-        run: chmod +x gradlew
+        with:
+          gradle-version: '8.9'
+          validate-wrappers: false
 
       - name: Decode Keystore File
         run: |
@@ -42,7 +39,8 @@ jobs:
           STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          gradle assembleRelease --no-daemon
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
