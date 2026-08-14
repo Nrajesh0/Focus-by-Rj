@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'            # Triggers on tags like v1.0.0, v1.0.1
-  workflow_dispatch:    # Allows manual runs from the GitHub Actions tab
+  workflow_dispatch:    # Allows manual test runs from the Actions tab
 
 permissions:
   contents: write
@@ -24,18 +24,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
-      - name: Ensure Gradle Wrapper Jar Exists
-        run: |
-          mkdir -p gradle/wrapper
-          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            echo "Gradle wrapper jar missing. Downloading official wrapper..."
-            curl -sLo gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar
-          fi
-
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
 
       - name: Decode Keystore File
         run: |
@@ -49,7 +42,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m"
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          gradle assembleRelease --no-daemon --stacktrace
 
       - name: Verify Signed APK Exists
         run: |
