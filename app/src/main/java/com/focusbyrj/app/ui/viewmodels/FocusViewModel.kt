@@ -133,18 +133,29 @@ class FocusViewModel(private val repository: AppRepository, application: Applica
             _isSessionActive.value = false
             _timeRemaining.value = _initialTime.value
             prefs.edit().putBoolean("isSessionActive", false).apply()
+            com.focusbyrj.app.util.FocusStatsManager.refreshStats(getApplication())
         } else {
             _isSessionActive.value = true
             prefs.edit().putBoolean("isSessionActive", true).apply()
             timerJob = viewModelScope.launch {
+                var elapsedSecs = 0
                 while (_timeRemaining.value > 0 && _isSessionActive.value) {
                     kotlinx.coroutines.delay(1000)
                     _timeRemaining.value -= 1
+                    elapsedSecs++
+                    if (elapsedSecs >= 10) {
+                        com.focusbyrj.app.util.FocusStatsManager.addFocusSessionTime(getApplication(), elapsedSecs.toLong())
+                        elapsedSecs = 0
+                    }
+                }
+                if (elapsedSecs > 0) {
+                    com.focusbyrj.app.util.FocusStatsManager.addFocusSessionTime(getApplication(), elapsedSecs.toLong())
                 }
                 if (_timeRemaining.value == 0L) {
                     _isSessionActive.value = false
                     _timeRemaining.value = _initialTime.value
                     prefs.edit().putBoolean("isSessionActive", false).apply()
+                    com.focusbyrj.app.util.FocusStatsManager.refreshStats(getApplication())
                 }
             }
         }

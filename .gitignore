@@ -16,7 +16,13 @@
 local.properties
 .env
 debug.keystore
+*.dex
+*.apk
+*.aar
+*.class
+*.jar
 *.jks
 *.keystore
 *.base64
 .env*
+.build-outputs/

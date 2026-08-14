@@ -24,6 +24,11 @@ import com.focusbyrj.app.data.FocusDatabase
 
 class FocusApplication : Application() {
     
+    override fun onCreate() {
+        super.onCreate()
+        com.focusbyrj.app.util.FocusStatsManager.init(this)
+    }
+
     val database by lazy { 
         Room.databaseBuilder(
             this,

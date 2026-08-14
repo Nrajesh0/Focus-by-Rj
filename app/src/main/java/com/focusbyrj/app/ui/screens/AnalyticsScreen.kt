@@ -32,55 +32,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.focusbyrj.app.ui.theme.AccentCyan
-import com.focusbyrj.app.ui.theme.AccentViolet
 import com.focusbyrj.app.ui.theme.BorderGlass
 import com.focusbyrj.app.ui.theme.SurfaceDark
-import com.focusbyrj.app.ui.theme.SurfaceVariantDark
-import com.focusbyrj.app.util.UsageStatsHelper
+import com.focusbyrj.app.util.FocusStatsManager
+import com.focusbyrj.app.util.HeatmapTheme
 import java.util.Calendar
 
 @Composable
 fun AnalyticsScreen() {
     val context = LocalContext.current
-    var dailyUsage by remember { mutableStateOf<Map<Int, Long>>(emptyMap()) }
-    var currentStreak by remember { mutableStateOf(0) }
-    var longestStreak by remember { mutableStateOf(0) }
+    val stats by FocusStatsManager.statsFlow.collectAsState()
+    val heatmapTheme by FocusStatsManager.themeFlow.collectAsState()
     
-    
-    
-    var trigger by remember { mutableStateOf(0) }
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { trigger++ }
-    LaunchedEffect(trigger) {
-        if (UsageStatsHelper.hasUsageStatsPermission(context)) {
-            val stats = UsageStatsHelper.getLast30DaysUsageStats(context)
-            dailyUsage = stats
-            
-            // Calculate streak based on days with >1hr screen time (arbitrary)
-            var streak = 0
-            val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-            for (i in 0 downTo -30) {
-                val day = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, i) }.get(Calendar.DAY_OF_YEAR)
-                if ((stats[day] ?: 0L) > 60 * 60 * 1000) {
-                    streak++
-                } else if (i < 0) {
-                    break
-                }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                FocusStatsManager.refreshStats(context)
             }
-            currentStreak = streak
-            var maxStreak = 0
-            var tempStreak = 0
-            for (i in -30..0) {
-                val d = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, i) }.get(java.util.Calendar.DAY_OF_YEAR)
-                if ((stats[d] ?: 0L) > 60 * 60 * 1000) {
-                    tempStreak++
-                    if (tempStreak > maxStreak) maxStreak = tempStreak
-                } else {
-                    tempStreak = 0
-                }
-            }
-            longestStreak = maxStreak
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(Unit) {
+        FocusStatsManager.refreshStats(context)
     }
 
     LazyColumn(
@@ -108,21 +84,37 @@ fun AnalyticsScreen() {
         }
 
         item {
-            HeatmapWidget(dailyUsage)
+            HeatmapWidget(
+                dailyUsage = stats.dailyFocusMinutes,
+                theme = heatmapTheme
+            )
         }
         
         item {
             Spacer(modifier = Modifier.height(24.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatsCard("Longest Streak", "${longestStreak} Days", modifier = Modifier.weight(1f))
-                StatsCard("Current Streak", "$currentStreak Days", modifier = Modifier.weight(1f))
+                StatsCard(
+                    label = "Longest Streak",
+                    value = "${stats.longestStreak} Days",
+                    modifier = Modifier.weight(1f),
+                    accentColor = heatmapTheme.colors.last()
+                )
+                StatsCard(
+                    label = "Current Streak",
+                    value = "${stats.currentStreak} Days",
+                    modifier = Modifier.weight(1f),
+                    accentColor = heatmapTheme.colors[3]
+                )
             }
         }
     }
 }
 
 @Composable
-fun HeatmapWidget(dailyUsage: Map<Int, Long>) {
+fun HeatmapWidget(
+    dailyUsage: Map<Int, Long>,
+    theme: HeatmapTheme
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,22 +124,26 @@ fun HeatmapWidget(dailyUsage: Map<Int, Long>) {
             .padding(24.dp)
     ) {
         Column {
-            Text(
-                "ACTIVITY LAST 30 DAYS",
-                style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "ACTIVITY LAST 30 DAYS",
+                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    theme.displayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = theme.colors.last()
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val levels = listOf(
-                    SurfaceVariantDark,
-                    AccentViolet.copy(alpha = 0.4f),
-                    AccentViolet.copy(alpha = 0.7f),
-                    AccentViolet,
-                    AccentCyan
-                )
-                
+                val levels = theme.colors
                 val todayCalendar = Calendar.getInstance()
                 
                 for (week in 4 downTo 0) {
@@ -163,10 +159,10 @@ fun HeatmapWidget(dailyUsage: Map<Int, Long>) {
                             val levelIndex = when {
                                 isFuture -> 0
                                 usageMs == 0L -> 0
-                                usageMs < 1 * 60 * 60 * 1000 -> 1 // < 1 hour
-                                usageMs < 3 * 60 * 60 * 1000 -> 2 // < 3 hours
-                                usageMs < 5 * 60 * 60 * 1000 -> 3 // < 5 hours
-                                else -> 4 // > 5 hours
+                                usageMs < 15 * 60 * 1000L -> 1 // < 15 min
+                                usageMs < 30 * 60 * 1000L -> 2 // < 30 min
+                                usageMs < 60 * 60 * 1000L -> 3 // < 1 hour
+                                else -> 4                      // >= 1 hour
                             }
                             
                             val color = levels[levelIndex]
@@ -190,12 +186,15 @@ fun HeatmapWidget(dailyUsage: Map<Int, Long>) {
             }
             
             Spacer(modifier = Modifier.height(24.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Less", color = Color.Gray, fontSize = 10.sp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val levels = listOf(SurfaceVariantDark, AccentViolet.copy(alpha = 0.4f), AccentViolet.copy(alpha = 0.7f), AccentViolet, AccentCyan)
-                    levels.forEach { color ->
+                    theme.colors.forEach { color ->
                         Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(2.dp)).background(color))
                     }
                 }
@@ -207,7 +206,12 @@ fun HeatmapWidget(dailyUsage: Map<Int, Long>) {
 }
 
 @Composable
-fun StatsCard(label: String, value: String, modifier: Modifier = Modifier) {
+fun StatsCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    accentColor: Color = Color.White
+) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
@@ -218,7 +222,7 @@ fun StatsCard(label: String, value: String, modifier: Modifier = Modifier) {
         Column {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text(value, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = accentColor)
         }
     }
 }

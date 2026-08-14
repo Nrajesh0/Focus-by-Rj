@@ -543,22 +543,18 @@ fun EmptyStateView() {
 @Composable
 fun StreakAndShieldedSection(restrictions: List<AppRestriction>) {
     val context = LocalContext.current
-    var currentStreak by remember { mutableStateOf(0) }
+    val stats by com.focusbyrj.app.util.FocusStatsManager.statsFlow.collectAsState()
+    val heatmapTheme by com.focusbyrj.app.util.FocusStatsManager.themeFlow.collectAsState()
     
-    LaunchedEffect(Unit) {
-        if (com.focusbyrj.app.util.UsageStatsHelper.hasUsageStatsPermission(context)) {
-            val stats = com.focusbyrj.app.util.UsageStatsHelper.getLast30DaysUsageStats(context)
-            var streak = 0
-            for (i in 0 downTo -30) {
-                val day = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, i) }.get(java.util.Calendar.DAY_OF_YEAR)
-                if ((stats[day] ?: 0L) > 60 * 60 * 1000) {
-                    streak++
-                } else if (i < 0) {
-                    break
-                }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                com.focusbyrj.app.util.FocusStatsManager.refreshStats(context)
             }
-            currentStreak = streak
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Row(
@@ -577,17 +573,15 @@ fun StreakAndShieldedSection(restrictions: List<AppRestriction>) {
         ) {
             Column {
                 Text("STREAK", style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp, fontSize = 10.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.weight(1f)
-                .fillMaxHeight())
+                Spacer(modifier = Modifier.weight(1f).fillMaxHeight())
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("$currentStreak", style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), color = AccentCyan)
+                    Text("${stats.currentStreak}", style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), color = heatmapTheme.colors.last())
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("days", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val colors = listOf(Color(0xFF164E63), Color(0xFF0E7490), Color(0xFF06B6D4), Color(0xFF22D3EE), Color(0xFF22D3EE))
-                    colors.forEach { color ->
+                    heatmapTheme.colors.forEach { color ->
                         Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(2.dp)).background(color))
                     }
                 }
