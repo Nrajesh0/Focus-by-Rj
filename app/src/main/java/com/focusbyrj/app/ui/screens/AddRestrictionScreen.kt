@@ -198,7 +198,7 @@ fun AddRestrictionScreen(navController: NavController, viewModel: FocusViewModel
                             packageName = app.packageName,
                             appName = app.appName,
                             mode = selectedMode,
-                            customQuote = customQuote.ifBlank { "Are you chasing cheap dopamine?" },
+                            customQuote = customQuote.trim(),
                             isRestricted = true
                         )
                         viewModel.addRestriction(newRestriction)

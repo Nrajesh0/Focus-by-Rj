@@ -19,10 +19,16 @@ package com.focusbyrj.app
 
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.BatteryFull
+import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.remember
 import android.os.Bundle
+import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -80,9 +86,12 @@ import com.focusbyrj.app.ui.screens.SchedulesScreen
 import com.focusbyrj.app.ui.screens.TimeScreen
 import com.focusbyrj.app.ui.screens.BackupSecurityScreen
 import com.focusbyrj.app.ui.screens.AddRestrictionScreen
+import com.focusbyrj.app.ui.screens.SettingsScreen
+import com.focusbyrj.app.ui.components.SetupPermissionsDialog
 import com.focusbyrj.app.ui.theme.FocusByRjTheme
 import com.focusbyrj.app.ui.theme.SurfaceDark
 import com.focusbyrj.app.ui.theme.AccentCyan
+import com.focusbyrj.app.ui.theme.NeonGreen
 import com.focusbyrj.app.ui.viewmodels.FocusViewModel
 import com.focusbyrj.app.ui.viewmodels.FocusViewModelFactory
 
@@ -129,12 +138,53 @@ fun MainAppScreen(viewModel: FocusViewModel) {
     val currentDestination = navBackStackEntry?.destination
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val hasUsageStats = remember(context) { com.focusbyrj.app.util.PermissionUtils.hasUsageStatsPermission(context) }
-    val hasOverlay = remember(context) { com.focusbyrj.app.util.PermissionUtils.hasOverlayPermission(context) }
+    val prefs = remember { context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE) }
+    
+    var hasUsageStats by remember { mutableStateOf(com.focusbyrj.app.util.PermissionUtils.hasUsageStatsPermission(context)) }
+    var hasOverlay by remember { mutableStateOf(com.focusbyrj.app.util.PermissionUtils.hasOverlayPermission(context)) }
+    var isBatteryUnrestricted by remember { mutableStateOf(com.focusbyrj.app.util.PermissionUtils.isIgnoringBatteryOptimizations(context)) }
+    
+    var showSetupDialog by remember { 
+        val hasSeenOnboarding = prefs.getBoolean("has_seen_permission_onboarding", false)
+        mutableStateOf(!hasSeenOnboarding && (!hasUsageStats || !hasOverlay || !isBatteryUnrestricted))
+    }
+
     val allPermissionsGranted = hasUsageStats && hasOverlay
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        com.focusbyrj.app.service.FocusBlockerService.startService(context)
+    androidx.compose.runtime.LaunchedEffect(allPermissionsGranted) {
+        if (allPermissionsGranted) {
+            com.focusbyrj.app.service.FocusBlockerService.startService(context)
+        }
+    }
+    
+    // Refresh permission states on resume with ZERO battery waste
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                hasUsageStats = com.focusbyrj.app.util.PermissionUtils.hasUsageStatsPermission(context)
+                hasOverlay = com.focusbyrj.app.util.PermissionUtils.hasOverlayPermission(context)
+                isBatteryUnrestricted = com.focusbyrj.app.util.PermissionUtils.isIgnoringBatteryOptimizations(context)
+                
+                if (hasUsageStats && hasOverlay) {
+                    com.focusbyrj.app.service.FocusBlockerService.startService(context)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (showSetupDialog) {
+        SetupPermissionsDialog(
+            hasUsageStats = hasUsageStats,
+            hasOverlay = hasOverlay,
+            isBatteryUnrestricted = isBatteryUnrestricted,
+            onDismiss = {
+                prefs.edit().putBoolean("has_seen_permission_onboarding", true).apply()
+                showSetupDialog = false
+            }
+        )
     }
     
     ModalNavigationDrawer(
@@ -151,13 +201,20 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                // Usage Access Item
                 NavigationDrawerItem(
                     label = { 
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Text("Usage Access Permission", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (!hasUsageStats) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(androidx.compose.material.icons.Icons.Filled.Warning, contentDescription = "Warning", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Usage Access", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (hasUsageStats) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = "Granted", tint = NeonGreen, modifier = Modifier.size(18.dp))
+                            } else {
+                                Icon(Icons.Filled.Warning, contentDescription = "Warning", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                             }
                         }
                     },
@@ -166,16 +223,23 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                         scope.launch { drawerState.close() }
                         com.focusbyrj.app.util.PermissionUtils.requestUsageStatsPermission(context)
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
+
+                // Display Over Apps Item
                 NavigationDrawerItem(
                     label = { 
-                        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Text("Display Over Apps Permission", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (!hasOverlay) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(androidx.compose.material.icons.Icons.Filled.Warning, contentDescription = "Warning", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Display Over Apps", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (hasOverlay) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = "Granted", tint = NeonGreen, modifier = Modifier.size(18.dp))
+                            } else {
+                                Icon(Icons.Filled.Warning, contentDescription = "Warning", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                             }
                         }
                     },
@@ -184,9 +248,49 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                         scope.launch { drawerState.close() }
                         com.focusbyrj.app.util.PermissionUtils.requestOverlayPermission(context)
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
+
+                // Battery Optimization Item
+                NavigationDrawerItem(
+                    label = { 
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Battery: No Restrictions", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (isBatteryUnrestricted) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = "Unrestricted", tint = NeonGreen, modifier = Modifier.size(18.dp))
+                            } else {
+                                Icon(Icons.Filled.BatteryAlert, contentDescription = "Restricted Warning", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        com.focusbyrj.app.util.PermissionUtils.requestIgnoreBatteryOptimizations(context)
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+
+                // Setup Guide Prompt
+                NavigationDrawerItem(
+                    label = { Text("Permissions & Battery Guide", color = AccentCyan) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        showSetupDialog = true
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
+
                 NavigationDrawerItem(
                     label = { Text("Security", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     selected = false,
@@ -194,7 +298,7 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.BackupSecurity.route)
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
                 NavigationDrawerItem(
@@ -204,7 +308,7 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                         scope.launch { drawerState.close() }
                         navController.navigate(Screen.Settings.route)
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
             }

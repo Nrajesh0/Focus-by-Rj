@@ -12,6 +12,7 @@ android {
 
   defaultConfig {
     applicationId = "com.focusbyrj.app"
+    multiDexEnabled = true
     minSdk = 24
     targetSdk = 35
     versionCode = 1
@@ -45,15 +46,10 @@ android {
     debug { signingConfig = signingConfigs.getByName("debug") }
   }
 
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
-
 
   buildFeatures {
     compose = true
@@ -65,6 +61,12 @@ android {
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
+  }
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
   }
 }
 

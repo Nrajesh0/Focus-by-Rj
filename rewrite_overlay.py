@@ -15,13 +15,13 @@ replacement = """        val layout = object : LinearLayout(context) {
                 return super.dispatchKeyEvent(event)
             }
         }.apply {
-            isFocusable = true
-            isFocusableInTouchMode = true
-            isClickable = true
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#14151D"))"""
+            setBackgroundColor(Color.parseColor("#14151D"))
+            gravity = Gravity.CENTER
+            setPadding(64, 64, 64, 64)
+        }"""
 
-text = re.sub(r'        val layout = object : LinearLayout\(context\) \{\n.*?\n.*?\n.*?\n.*?\n.*?\n.*?\n.*?\n        \}\.apply \{\n            orientation = LinearLayout.VERTICAL\n            setBackgroundColor\(Color.parseColor\("#14151D"\)\)', replacement, text, flags=re.DOTALL)
+text = re.sub(r'        val layout = LinearLayout\(context\)\.apply \{\n.*?\n.*?\n.*?\n.*?\n        \}', replacement, text, flags=re.DOTALL)
 
 with open(path, 'w') as f:
     f.write(text)

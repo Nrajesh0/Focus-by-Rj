@@ -1,173 +1,463 @@
+/*
+ * Copyright (C) 2024-2026 Focus by Rj
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.focusbyrj.app.service
 
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import com.focusbyrj.app.ui.screens.BlockActivity
+import com.focusbyrj.app.util.FocusQuotes
 import com.focusbyrj.app.util.TemporaryUnlockManager
-import android.graphics.drawable.GradientDrawable
 
 object BlockOverlayManager {
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
     private var currentPackageName: String? = null
-    private var handler = Handler(Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     private var timeLeft = 10
     private var countdownRunnable: Runnable? = null
-    private var isShowing = false
+    var isShowing = false
+        private set
 
-    fun showOverlay(context: Context, packageName: String, quote: String, mode: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) return
-
+    fun showBlockScreen(context: Context, packageName: String, quote: String, mode: String) {
         if (isShowing && currentPackageName == packageName) return
-        
-        hideOverlay() // Ensure previous is removed
-        
-        windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            @Suppress("DEPRECATION")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        )
 
-        val layout = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#14151D"))
-            gravity = Gravity.CENTER
-            setPadding(64, 64, 64, 64)
+        // If overlay permission is granted, display the overlay window
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
+            val success = tryShowOverlay(context, packageName, quote, mode)
+            if (success) return
         }
 
-        val title = TextView(context).apply {
-            text = "Pause."
-            textSize = 36f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 48)
+        // Fallback: Launch BlockActivity directly
+        launchBlockActivity(context, packageName, quote, mode)
+    }
+
+    private fun launchBlockActivity(context: Context, packageName: String, quote: String, mode: String) {
+        try {
+            val intent = Intent(context, BlockActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra("package_name", packageName)
+                putExtra("quote", quote)
+                putExtra("mode", mode)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        layout.addView(title)
+    }
 
-        val quoteView = TextView(context).apply {
-            text = quote
-            textSize = 20f
-            setTextColor(Color.parseColor("#00E5FF"))
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 96)
-        }
-        layout.addView(quoteView)
+    private fun tryShowOverlay(context: Context, packageName: String, quote: String, mode: String): Boolean {
+        hideOverlay() // Ensure previous overlay is cleaned up
 
-        if (mode == "HARD") {
-            val hardText = TextView(context).apply {
-                text = "HARD SHIELD ACTIVE"
-                textSize = 24f
-                setTextColor(Color.parseColor("#FF5252"))
-                gravity = Gravity.CENTER
-                setPadding(0, 0, 0, 64)
-            }
-            layout.addView(hardText)
-
-            val exitBtn = Button(context).apply {
-                text = "Exit App"
-                setTextColor(Color.WHITE)
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#FF5252"))
-                    cornerRadius = 32f
-                }
-                setOnClickListener {
-                    goHome(context)
-                }
-            }
-            layout.addView(exitBtn)
-        } else {
-            timeLeft = context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE).getInt("soft_lock_duration", 10)
-            val timeText = TextView(context).apply {
-                text = timeLeft.toString()
-                textSize = 48f
-                setTextColor(Color.LTGRAY)
-                gravity = Gravity.CENTER
-                setPadding(0, 0, 0, 64)
-            }
-            layout.addView(timeText)
-
-            val actionBtn = Button(context).apply {
-                text = "Wait ${timeLeft}s..."
-                setTextColor(Color.WHITE)
-                isEnabled = false
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#424242"))
-                    cornerRadius = 32f
+        return try {
+            windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            
+            // Fullscreen params extending completely under status bar, nav bar, and display cutout
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                } else {
+                    @Suppress("DEPRECATION")
+                    WindowManager.LayoutParams.TYPE_PHONE
+                },
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
+                WindowManager.LayoutParams.FLAG_FULLSCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.FILL
+                width = WindowManager.LayoutParams.MATCH_PARENT
+                height = WindowManager.LayoutParams.MATCH_PARENT
+                x = 0
+                y = 0
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 }
             }
-            layout.addView(actionBtn)
 
-            countdownRunnable = object : Runnable {
-                override fun run() {
-                    if (timeLeft > 0) {
-                        timeLeft--
-                        timeText.text = timeLeft.toString()
-                        actionBtn.text = "Wait ${timeLeft}s..."
-                        handler.postDelayed(this, 1000)
-                    } else {
-                        actionBtn.isEnabled = true
-                        actionBtn.text = "Opening App..."
-                        actionBtn.background = GradientDrawable().apply {
-                            setColor(Color.parseColor("#00E5FF"))
-                            cornerRadius = 32f
+            val isHardMode = mode.equals("HARD", ignoreCase = true)
+
+            // Resolve app name & icon
+            var appName = packageName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+            var appIcon: Drawable? = null
+            try {
+                val pm = context.packageManager
+                val info = pm.getApplicationInfo(packageName, 0)
+                appName = pm.getApplicationLabel(info).toString()
+                appIcon = pm.getApplicationIcon(info)
+            } catch (e: Exception) {
+                // Keep fallback
+            }
+
+            val totalSoftLockSeconds = context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
+                .getInt("soft_lock_duration", 10)
+            val unlockMins = context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
+                .getInt("soft_unlock_duration", 5)
+
+            val displayedQuote = FocusQuotes.getQuoteOrDefault(quote)
+            timeLeft = if (isHardMode) 0 else totalSoftLockSeconds
+
+            // Root Scrollable layout spanning 100% of display in pure deep black shades
+            val scrollView = object : ScrollView(context) {
+                override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+                    if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+                        if (event.action == android.view.KeyEvent.ACTION_UP) {
+                            goHome(context, packageName)
                         }
-                        actionBtn.setTextColor(Color.BLACK)
-                        actionBtn.setOnClickListener {
-                            TemporaryUnlockManager.grantUnlock(context, packageName, 5)
-                            hideOverlay()
-                            // No need to launch intent, just hide overlay since app is already below!
+                        return true
+                    }
+                    return super.dispatchKeyEvent(event)
+                }
+            }.apply {
+                fitsSystemWindows = false
+                @Suppress("DEPRECATION")
+                systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                )
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                isFillViewport = true
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(
+                        Color.parseColor("#000000"),
+                        Color.parseColor("#050608"),
+                        Color.parseColor("#020304")
+                    )
+                )
+            }
+
+            val centerContainer = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(48, 80, 48, 80)
+            }
+            scrollView.addView(centerContainer)
+
+            // THE SINGLE TRANSLUCENT OBSIDIAN GLASS BOX
+            val singleCard = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#F20C0D14"))
+                    cornerRadius = 56f
+                    setStroke(2, Color.parseColor("#1AFFFFFF"))
+                }
+                setPadding(52, 64, 52, 64)
+            }
+            val cardParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            centerContainer.addView(singleCard, cardParams)
+
+            // 1. App Icon
+            if (appIcon != null) {
+                val iconView = ImageView(context).apply {
+                    setImageDrawable(appIcon)
+                    background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#141620"))
+                        cornerRadius = 36f
+                        setStroke(2, Color.parseColor("#1FFFFFFF"))
+                    }
+                    setPadding(18, 18, 18, 18)
+                }
+                val iconParams = LinearLayout.LayoutParams(136, 136).apply {
+                    setMargins(0, 0, 0, 24)
+                }
+                singleCard.addView(iconView, iconParams)
+            }
+
+            // 2. App Name
+            val nameText = TextView(context).apply {
+                text = appName
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.parseColor("#E2E8F0"))
+                gravity = Gravity.CENTER
+            }
+            singleCard.addView(nameText)
+
+            // 3. Header title
+            val titleText = TextView(context).apply {
+                text = if (isHardMode) "Focus Shielded." else "Pause & Reflect."
+                textSize = 22f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (isHardMode) Color.parseColor("#F43F5E") else Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(0, 4, 0, 16)
+            }
+            singleCard.addView(titleText)
+
+            // 4. Quote Section
+            val quoteText = TextView(context).apply {
+                text = "“$displayedQuote”"
+                textSize = 14f
+                typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
+                setTextColor(Color.parseColor("#CBD5E1"))
+                gravity = Gravity.CENTER
+                setLineSpacing(6f, 1f)
+                setPadding(8, 0, 8, 24)
+            }
+            singleCard.addView(quoteText)
+
+            // 5. Actions / Timer container
+            val dynamicActionLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+            }
+            singleCard.addView(dynamicActionLayout, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+
+            if (isHardMode) {
+                val descText = TextView(context).apply {
+                    text = "This app is strictly locked to honor your focus commitment."
+                    textSize = 13f
+                    setTextColor(Color.parseColor("#94A3B8"))
+                    gravity = Gravity.CENTER
+                    setLineSpacing(5f, 1f)
+                    setPadding(0, 0, 0, 28)
+                }
+                dynamicActionLayout.addView(descText)
+
+                val exitBtn = Button(context).apply {
+                    text = "Exit to Home"
+                    textSize = 15f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(Color.WHITE)
+                    background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#F43F5E"))
+                        cornerRadius = 52f
+                    }
+                    setPadding(32, 22, 32, 22)
+                    setOnClickListener { goHome(context, packageName) }
+                }
+                dynamicActionLayout.addView(exitBtn, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+            } else {
+                // Sleek numeric countdown without circles
+                val timeNum = TextView(context).apply {
+                    text = if (timeLeft < 10) "00:0$timeLeft" else "00:$timeLeft"
+                    textSize = 34f
+                    typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    letterSpacing = 0.12f
+                }
+                dynamicActionLayout.addView(timeNum)
+
+                // Linear minimal progress line
+                val progressBar = View(context).apply {
+                    background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#6366F1"))
+                        cornerRadius = 8f
+                    }
+                }
+                val progressParams = LinearLayout.LayoutParams(240, 6).apply {
+                    setMargins(0, 14, 0, 10)
+                }
+                dynamicActionLayout.addView(progressBar, progressParams)
+
+                val timeSub = TextView(context).apply {
+                    text = "Mindful pause in progress"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#94A3B8"))
+                    gravity = Gravity.CENTER
+                }
+                val timeSubParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(0, 0, 0, 30)
+                }
+                dynamicActionLayout.addView(timeSub, timeSubParams)
+
+                val exitInitialBtn = Button(context).apply {
+                    text = "Exit to Home"
+                    setTextColor(Color.WHITE)
+                    textSize = 14f
+                    typeface = Typeface.DEFAULT_BOLD
+                    background = GradientDrawable().apply {
+                        setColor(Color.parseColor("#10121B"))
+                        setStroke(2, Color.parseColor("#1FFFFFFF"))
+                        cornerRadius = 52f
+                    }
+                    setPadding(32, 20, 32, 20)
+                    setOnClickListener { goHome(context, packageName) }
+                }
+                dynamicActionLayout.addView(exitInitialBtn, LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ))
+
+                // Timer Countdown
+                countdownRunnable = object : Runnable {
+                    override fun run() {
+                        if (timeLeft > 1) {
+                            timeLeft--
+                            timeNum.text = if (timeLeft < 10) "00:0$timeLeft" else "00:$timeLeft"
+                            handler.postDelayed(this, 1000)
+                        } else {
+                            // TIMER FINISHED: Elegant "Pause Completed"
+                            timeLeft = 0
+                            dynamicActionLayout.removeAllViews()
+
+                            val pauseCompletedTitle = TextView(context).apply {
+                                text = "Pause Completed"
+                                textSize = 16f
+                                typeface = Typeface.DEFAULT_BOLD
+                                setTextColor(Color.parseColor("#E2E8F0"))
+                                gravity = Gravity.CENTER
+                                letterSpacing = 0.04f
+                            }
+                            val badgeParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                setMargins(0, 0, 0, 8)
+                            }
+                            dynamicActionLayout.addView(pauseCompletedTitle, badgeParams)
+
+                            val askPrompt = TextView(context).apply {
+                                text = "Would you like to open $appName for $unlockMins minutes or exit?"
+                                textSize = 13f
+                                setTextColor(Color.parseColor("#94A3B8"))
+                                gravity = Gravity.CENTER
+                                setLineSpacing(5f, 1f)
+                                setPadding(0, 0, 0, 24)
+                            }
+                            dynamicActionLayout.addView(askPrompt)
+
+                            val openBtn = Button(context).apply {
+                                text = "Open for $unlockMins Minutes"
+                                textSize = 15f
+                                typeface = Typeface.DEFAULT_BOLD
+                                setTextColor(Color.parseColor("#08090E"))
+                                background = GradientDrawable().apply {
+                                    setColor(Color.WHITE)
+                                    cornerRadius = 52f
+                                }
+                                setPadding(32, 22, 32, 22)
+                                setOnClickListener {
+                                    TemporaryUnlockManager.grantUnlock(context, packageName, unlockMins)
+                                    hideOverlay()
+                                }
+                            }
+                            dynamicActionLayout.addView(openBtn, LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ))
+
+                            val exitFinalBtn = Button(context).apply {
+                                text = "Exit to Home"
+                                textSize = 14f
+                                typeface = Typeface.DEFAULT_BOLD
+                                setTextColor(Color.WHITE)
+                                background = GradientDrawable().apply {
+                                    setColor(Color.parseColor("#10121B"))
+                                    setStroke(2, Color.parseColor("#1FFFFFFF"))
+                                    cornerRadius = 52f
+                                }
+                                setPadding(32, 20, 32, 20)
+                                setOnClickListener { goHome(context, packageName) }
+                            }
+                            val exitFinalParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply {
+                                setMargins(0, 12, 0, 0)
+                            }
+                            dynamicActionLayout.addView(exitFinalBtn, exitFinalParams)
                         }
                     }
                 }
+                handler.postDelayed(countdownRunnable!!, 1000)
             }
-            handler.postDelayed(countdownRunnable!!, 1000)
-        }
 
-        overlayView = layout
-        currentPackageName = packageName
-        isShowing = true
-        
-        try {
+            overlayView = scrollView
+            currentPackageName = packageName
+            isShowing = true
             windowManager?.addView(overlayView, params)
+            true
         } catch (e: Exception) {
             e.printStackTrace()
-            isShowing = false
+            hideOverlay()
+            false
         }
     }
 
     fun hideOverlay() {
-        if (!isShowing) return
+        if (!isShowing && overlayView == null) return
         try {
             countdownRunnable?.let { handler.removeCallbacks(it) }
+            countdownRunnable = null
             overlayView?.let { windowManager?.removeView(it) }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            overlayView = null
+            currentPackageName = null
+            isShowing = false
         }
-        overlayView = null
-        isShowing = false
-        currentPackageName = null
     }
 
-    private fun goHome(context: Context) {
-        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_HOME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    private fun goHome(context: Context, pkgName: String? = null) {
+        FocusExitTracker.notifyExited(pkgName)
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            }
+            context.startActivity(homeIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        context.startActivity(homeIntent)
         hideOverlay()
     }
 }

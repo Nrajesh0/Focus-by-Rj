@@ -27,8 +27,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.room.Room
+import com.focusbyrj.app.R
 import com.focusbyrj.app.data.FocusDatabase
+import com.focusbyrj.app.util.FocusQuotes
 import com.focusbyrj.app.util.TemporaryUnlockManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,20 +38,42 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+object FocusExitTracker {
+    @Volatile
+    var lastExitedPackage: String? = null
+    @Volatile
+    var exitTimestamp: Long = 0L
+
+    fun notifyExited(packageName: String?) {
+        lastExitedPackage = packageName
+        exitTimestamp = System.currentTimeMillis()
+    }
+
+    fun isExitSuppressed(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        if (packageName != lastExitedPackage) return false
+        return (System.currentTimeMillis() - exitTimestamp) < 25000L
+    }
+
+    fun onNewForegroundAppDetected(packageName: String) {
+        if (packageName != lastExitedPackage && packageName.isNotBlank() && packageName != "com.android.systemui") {
+            lastExitedPackage = null
+            exitTimestamp = 0L
+        }
+    }
+}
+
 class FocusBlockerService : Service() {
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
     private lateinit var db: FocusDatabase
 
-    private var lastBlockedPackage: String? = null
-    private var lastBlockTime: Long = 0L
+    private var currentForegroundPackage: String? = null
 
     override fun onCreate() {
         super.onCreate()
-        db = Room.databaseBuilder(applicationContext, FocusDatabase::class.java, "focus_database")
-            .fallbackToDestructiveMigration()
-            .build()
+        db = (application as com.focusbyrj.app.FocusApplication).database
 
         startForegroundServiceNotification()
         startRoutineMonitorLoop()
@@ -76,7 +99,7 @@ class FocusBlockerService : Service() {
         val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Focus Guard Active")
             .setContentText("Protecting your screen time and boundaries")
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -104,12 +127,10 @@ class FocusBlockerService : Service() {
         }
     }
 
-    
     private var activeRoutines = mutableMapOf<String, com.focusbyrj.app.data.FocusSchedule>()
     
     private fun startRoutineMonitorLoop() {
         scope.launch {
-            // Give time for DB to init
             delay(2000L)
             while (isActive) {
                 try {
@@ -173,12 +194,12 @@ class FocusBlockerService : Service() {
 
     private fun sendRoutineNotification(title: String, message: String) {
         val channelId = "routine_alerts"
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = android.app.NotificationChannel(channelId, "Routine Alerts", android.app.NotificationManager.IMPORTANCE_DEFAULT)
+            val channel = NotificationChannel(channelId, "Routine Alerts", NotificationManager.IMPORTANCE_DEFAULT)
             notificationManager.createNotificationChannel(channel)
         }
-        val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
+        val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(title)
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -187,61 +208,120 @@ class FocusBlockerService : Service() {
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
-    private var lastCheckedTime: Long = System.currentTimeMillis()
-    private var currentForegroundPackage: String? = null
+    private val homePackages = mutableSetOf<String>()
+    private var lastHomePackagesCheck = 0L
 
+    private fun refreshHomePackages() {
+        val now = System.currentTimeMillis()
+        if (now - lastHomePackagesCheck < 30000L && homePackages.isNotEmpty()) return
+        lastHomePackagesCheck = now
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val list = packageManager.queryIntentActivities(homeIntent, 0)
+            for (info in list) {
+                info.activityInfo?.packageName?.let { homePackages.add(it) }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun isIgnoredPackage(packageName: String): Boolean {
+        if (packageName.isBlank()) return true
+        if (packageName == applicationContext.packageName || packageName == "com.focusbyrj.app") return true
+        if (packageName == "com.android.settings" || packageName == "com.android.systemui" || packageName == "android") return true
+        
+        refreshHomePackages()
+        if (homePackages.contains(packageName)) return true
+
+        val lower = packageName.lowercase()
+        return lower.contains("launcher") ||
+                lower.contains("quickstep") ||
+                lower.contains("trebuchet") ||
+                lower.contains("nexuslauncher") ||
+                lower.contains("miui.home") ||
+                lower.contains("sec.android.app.launcher") ||
+                lower.contains("huawei.android.launcher") ||
+                lower.contains("oppo.launcher") ||
+                lower.contains("vivo.launcher") ||
+                lower.contains("transsion.home") ||
+                lower.contains("motorola.launcher") ||
+                lower.contains("oneplus.launcher")
+    }
 
     private fun getForegroundPackage(): String? {
-        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return currentForegroundPackage
+        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
         val now = System.currentTimeMillis()
-        val startTime = now - 1000 * 60 * 60 // 1 hour sliding window to ensure we get daily stats if events fail
-        
-        val events = usm.queryEvents(now - 1000 * 30, now) // 30 seconds for precise events
+
+        // 1. Query recent UsageEvents
+        val events = usm.queryEvents(now - 1000 * 10, now)
         val event = UsageEvents.Event()
         var latestPackage: String? = null
         var latestTime = 0L
-        
+
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED || event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
                 if (event.timeStamp > latestTime) {
                     latestTime = event.timeStamp
                     latestPackage = event.packageName
                 }
             }
         }
-        
+
         if (latestPackage != null) {
+            // Reject stale events from before the user clicked 'Exit to Home'
+            if (latestPackage == FocusExitTracker.lastExitedPackage && latestTime <= FocusExitTracker.exitTimestamp) {
+                return null
+            }
+            if (latestPackage != FocusExitTracker.lastExitedPackage) {
+                FocusExitTracker.onNewForegroundAppDetected(latestPackage)
+            }
             currentForegroundPackage = latestPackage
-        } else {
-            val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, now)
-            if (!stats.isNullOrEmpty()) {
-                val mostRecent = stats.maxByOrNull { it.lastTimeUsed }
-                if (mostRecent != null) {
-                    currentForegroundPackage = mostRecent.packageName
+            return latestPackage
+        }
+
+        // 2. Fallback to queryUsageStats
+        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, now - 1000 * 30, now)
+        if (!stats.isNullOrEmpty()) {
+            val mostRecent = stats.maxByOrNull { it.lastTimeUsed }
+            if (mostRecent != null && (now - mostRecent.lastTimeUsed) < 15000) {
+                val pkg = mostRecent.packageName
+                if (pkg == FocusExitTracker.lastExitedPackage && mostRecent.lastTimeUsed <= FocusExitTracker.exitTimestamp) {
+                    return null
                 }
+                if (pkg != FocusExitTracker.lastExitedPackage) {
+                    FocusExitTracker.onNewForegroundAppDetected(pkg)
+                }
+                currentForegroundPackage = pkg
+                return pkg
             }
         }
+
+        if (FocusExitTracker.isExitSuppressed(currentForegroundPackage)) {
+            return null
+        }
+
         return currentForegroundPackage
     }
 
     private suspend fun checkAndBlockApp(packageName: String) {
-
-        if (packageName == applicationContext.packageName ||
-            packageName == "com.focusbyrj.app" ||
-            packageName == "com.android.systemui" ||
-            packageName == "com.android.settings" ||
-            packageName.contains("launcher")
-        ) {
+        if (isIgnoredPackage(packageName)) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 BlockOverlayManager.hideOverlay()
             }
             return
         }
 
+        // If user just exited this app to Home, suppress blocking until they actively reopen
+        if (FocusExitTracker.isExitSuppressed(packageName)) {
+            return
+        }
 
         if (TemporaryUnlockManager.isUnlocked(applicationContext, packageName)) {
-            android.util.Log.d("FocusGuard", "Skipping block for $packageName because it is temporarily unlocked")
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                BlockOverlayManager.hideOverlay()
+            }
             return
         }
 
@@ -253,36 +333,42 @@ class FocusBlockerService : Service() {
         val restriction = db.appRestrictionDao().getRestriction(packageName)
         if (restriction != null && restriction.isRestricted) {
             shouldBlock = true
-            blockQuote = restriction.customQuote
+            blockQuote = FocusQuotes.getQuoteOrDefault(restriction.customQuote)
             blockMode = restriction.mode
         }
 
-        // 2. Check scheduled routines if not already blocked (Optimized - No DB calls here!)
+        // 2. Check scheduled routines
         if (!shouldBlock) {
             for (schedule in activeRoutines.values) {
                 if (schedule.appsToBlock.split(",").contains(packageName)) {
                     shouldBlock = true
-                    blockQuote = "Routine: ${schedule.name} is active."
+                    blockQuote = "Routine '${schedule.name}' is active."
                     blockMode = schedule.mode
                     break
                 }
             }
         }
 
-        if (shouldBlock) {
-            val now = System.currentTimeMillis()
-            if (lastBlockedPackage == packageName && (now - lastBlockTime) < 1200) {
-                return
-            }
-            lastBlockedPackage = packageName
-            lastBlockTime = now
+        // 3. Check active Focus / Deep Work session
+        val prefs = applicationContext.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
+        val isSessionActive = prefs.getBoolean("isSessionActive", false)
+        if (!shouldBlock && isSessionActive && restriction != null) {
+            shouldBlock = true
+            blockQuote = FocusQuotes.getQuoteOrDefault(restriction.customQuote)
+            blockMode = restriction.mode
+        }
 
+        if (shouldBlock) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 try {
-                    BlockOverlayManager.showOverlay(this@FocusBlockerService, packageName, blockQuote, blockMode)
+                    BlockOverlayManager.showBlockScreen(this@FocusBlockerService, packageName, blockQuote, blockMode)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
+            }
+        } else if (BlockOverlayManager.isShowing) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                BlockOverlayManager.hideOverlay()
             }
         }
     }
