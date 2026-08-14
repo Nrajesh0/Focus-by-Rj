@@ -18,6 +18,7 @@
 package com.focusbyrj.app.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,13 +26,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +60,11 @@ fun SettingsScreen() {
     var selectedTheme by remember { mutableStateOf(prefs.getString("app_theme", "Midnight") ?: "Midnight") }
     
     val currentHeatmapTheme by FocusStatsManager.themeFlow.collectAsState()
+    var isHeatmapDropdownExpanded by remember { mutableStateOf(false) }
+    val dropdownArrowRotation by animateFloatAsState(
+        targetValue = if (isHeatmapDropdownExpanded) 180f else 0f,
+        label = "heatmap_dropdown_rotation"
+    )
 
     val themes = listOf("Midnight", "Ocean", "Sunset", "Forest", "Monochrome", "Lavender")
     val heatmapThemes = HeatmapTheme.entries
@@ -106,57 +118,198 @@ fun SettingsScreen() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    heatmapThemes.forEach { theme ->
-                        val isSelected = currentHeatmapTheme == theme
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (isSelected) theme.colors.last().copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface)
-                                .border(
-                                    1.dp,
-                                    if (isSelected) theme.colors.last() else BorderGlass,
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .clickable {
-                                    FocusStatsManager.setHeatmapTheme(context, theme)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                // Sophisticated Dropdown Anchor Trigger
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(SurfaceDark)
+                            .border(
+                                1.dp,
+                                if (isHeatmapDropdownExpanded) currentHeatmapTheme.colors.last() else BorderGlass,
+                                RoundedCornerShape(18.dp)
+                            )
+                            .clickable { isHeatmapDropdownExpanded = !isHeatmapDropdownExpanded }
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(
-                                        selected = isSelected,
-                                        onClick = { FocusStatsManager.setHeatmapTheme(context, theme) },
-                                        colors = RadioButtonDefaults.colors(
-                                            selectedColor = theme.colors.last(),
-                                            unselectedColor = Color.Gray
-                                        )
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = theme.displayName,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
-                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(currentHeatmapTheme.colors.last().copy(alpha = 0.2f))
+                                        .border(1.dp, currentHeatmapTheme.colors.last().copy(alpha = 0.5f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Palette,
+                                        contentDescription = null,
+                                        tint = currentHeatmapTheme.colors.last(),
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = currentHeatmapTheme.displayName,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Active gradient palette",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
 
-                                // Color swatch preview
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    theme.colors.forEach { color ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Current 5-color swatch preview
+                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    currentHeatmapTheme.colors.forEach { color ->
                                         Box(
                                             modifier = Modifier
-                                                .size(16.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .size(12.dp)
+                                                .clip(RoundedCornerShape(3.dp))
                                                 .background(color)
                                         )
                                     }
                                 }
+                                Icon(
+                                    imageVector = Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = "Select Palette",
+                                    tint = if (isHeatmapDropdownExpanded) currentHeatmapTheme.colors.last() else Color.Gray,
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .rotate(dropdownArrowRotation)
+                                )
+                            }
+                        }
+                    }
+
+                    // Dropdown Menu Popover
+                    DropdownMenu(
+                        expanded = isHeatmapDropdownExpanded,
+                        onDismissRequest = { isHeatmapDropdownExpanded = false },
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, BorderGlass, RoundedCornerShape(18.dp))
+                    ) {
+                        heatmapThemes.forEach { theme ->
+                            val isSelected = currentHeatmapTheme == theme
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            if (isSelected) {
+                                                Icon(
+                                                    Icons.Filled.Check,
+                                                    contentDescription = "Selected",
+                                                    tint = theme.colors.last(),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            } else {
+                                                Spacer(modifier = Modifier.width(26.dp))
+                                            }
+                                            Text(
+                                                text = theme.displayName,
+                                                style = MaterialTheme.typography.bodyMedium.copy(
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                ),
+                                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            theme.colors.forEach { color ->
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(14.dp)
+                                                        .clip(RoundedCornerShape(3.dp))
+                                                        .background(color)
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    FocusStatsManager.setHeatmapTheme(context, theme)
+                                    isHeatmapDropdownExpanded = false
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        if (isSelected) theme.colors.last().copy(alpha = 0.12f) else Color.Transparent
+                                    )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Live Preview Tonal Scale
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF0F172A).copy(alpha = 0.5f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "INTENSITY PREVIEW",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp, fontSize = 9.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        currentHeatmapTheme.colors.forEachIndexed { index, color ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(color)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = when (index) {
+                                        0 -> "0m"
+                                        1 -> "15m"
+                                        2 -> "30m"
+                                        3 -> "1h"
+                                        else -> "2h+"
+                                    },
+                                    fontSize = 9.sp,
+                                    color = Color.Gray
+                                )
                             }
                         }
                     }
