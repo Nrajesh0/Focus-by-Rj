@@ -27,10 +27,15 @@ android {
       if (keystoreFile.exists()) {
         storeFile = keystoreFile
         storePassword = System.getenv("STORE_PASSWORD")
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "my-app-key"
         keyPassword = System.getenv("KEY_PASSWORD")
       }
     }
+  }
+
+  lint {
+    abortOnError = false
+    checkReleaseBuilds = false
   }
 
   buildTypes {

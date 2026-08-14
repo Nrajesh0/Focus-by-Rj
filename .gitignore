@@ -21,6 +21,7 @@ debug.keystore
 *.aar
 *.class
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.jks
 *.keystore
 *.base64
