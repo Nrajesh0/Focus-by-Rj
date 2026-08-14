@@ -67,6 +67,12 @@ android {
     includeInApk = false
     includeInBundle = true
   }
+
+  packaging {
+    resources {
+      excludes += "kotlin-tooling-metadata.json"
+    }
+  }
 }
 
 kotlin {
