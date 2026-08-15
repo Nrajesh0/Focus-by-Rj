@@ -166,7 +166,6 @@ fun RoutineCard(schedule: com.focusbyrj.app.data.FocusSchedule, onEdit: () -> Un
             Text(timeString, style = MaterialTheme.typography.titleMedium, color = AccentCyan)
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Days of week
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val days = listOf("S", "M", "T", "W", "T", "F", "S")
                 val activeDays = schedule.daysOfWeek.split(",")
@@ -235,7 +234,6 @@ fun CreateRoutineScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically

@@ -38,7 +38,7 @@ fun TimeScreen() {
 
     LaunchedEffect(hasPermission) {
         if (hasPermission) {
-            val stats = UsageStatsHelper.getTodayUsageStats(context).filter { it.timeInForegroundMs > 60_000 } // only > 1 min
+            val stats = UsageStatsHelper.getTodayUsageStats(context).filter { it.timeInForegroundMs > 60_000 }
             usageStats = stats
             totalTimeMs = stats.sumOf { it.timeInForegroundMs }
         }

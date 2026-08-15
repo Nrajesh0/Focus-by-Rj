@@ -88,7 +88,6 @@ fun SetupPermissionsDialog(
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Header Icon
                     Box(
                         modifier = Modifier
                             .size(56.dp)
@@ -124,7 +123,6 @@ fun SetupPermissionsDialog(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Permission 1: Usage Access
                     PermissionSetupCard(
                         icon = Icons.Filled.QueryStats,
                         title = "1. Usage Access",
@@ -135,7 +133,6 @@ fun SetupPermissionsDialog(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Permission 2: Display Over Apps
                     PermissionSetupCard(
                         icon = Icons.Filled.Layers,
                         title = "2. Display Over Other Apps",
@@ -146,7 +143,6 @@ fun SetupPermissionsDialog(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Permission 3: Unrestricted Battery
                     PermissionSetupCard(
                         icon = Icons.Filled.BatteryFull,
                         title = "3. No Battery Restrictions",
@@ -159,7 +155,6 @@ fun SetupPermissionsDialog(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Done / Continue Button
                     val allGranted = hasUsageStats && hasOverlay && isBatteryUnrestricted
                     Button(
                         onClick = onDismiss,

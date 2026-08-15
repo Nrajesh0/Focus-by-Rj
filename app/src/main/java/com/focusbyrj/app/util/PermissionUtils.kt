@@ -50,7 +50,6 @@ object PermissionUtils {
                 if (mode == AppOpsManager.MODE_ALLOWED) return true
             }
 
-            // Fallback query check
             val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
             val now = System.currentTimeMillis()
             val stats = usm?.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 1000 * 60 * 60, now)

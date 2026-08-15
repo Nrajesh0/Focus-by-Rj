@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.remember
 import android.os.Bundle
 import android.content.Context
@@ -84,7 +85,20 @@ import com.focusbyrj.app.ui.screens.AnalyticsScreen
 import com.focusbyrj.app.ui.screens.DashboardScreen
 import com.focusbyrj.app.ui.screens.SchedulesScreen
 import com.focusbyrj.app.ui.screens.TimeScreen
-import com.focusbyrj.app.ui.screens.BackupSecurityScreen
+import com.focusbyrj.app.ui.screens.SecurityScreen
+import com.focusbyrj.app.ui.screens.PermissionsScreen
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import com.focusbyrj.app.ui.theme.AccentViolet
+import com.focusbyrj.app.ui.theme.AccentEmerald
+import com.focusbyrj.app.ui.theme.BorderGlass
 import com.focusbyrj.app.ui.screens.AddRestrictionScreen
 import com.focusbyrj.app.ui.screens.SettingsScreen
 import com.focusbyrj.app.ui.components.SetupPermissionsDialog
@@ -157,7 +171,6 @@ fun MainAppScreen(viewModel: FocusViewModel) {
         }
     }
     
-    // Refresh permission states on resume with ZERO battery waste
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -191,64 +204,114 @@ fun MainAppScreen(viewModel: FocusViewModel) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color(0xFF14151D)
+                modifier = Modifier.width(280.dp),
+                drawerContainerColor = MaterialTheme.colorScheme.background
             ) {
-                Spacer(Modifier.height(32.dp))
-                Text(
-                    "Focus Settings",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-
-                // Security & Permissions
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(24.dp)
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(androidx.compose.ui.res.painterResource(id = com.focusbyrj.app.R.drawable.ic_launcher_foreground), contentDescription = null, tint = Color.White, modifier = Modifier.size(40.dp))
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Focus Options",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Text(
+                            "Manage your boundaries",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Filled.Security, contentDescription = null, tint = AccentEmerald) },
+                    label = { Text("Security", color = Color.White, style = MaterialTheme.typography.bodyLarge) },
+                    selected = false,
+                    onClick = { 
+                         scope.launch { drawerState.close() }
+                                                navController.navigate(Screen.Security.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = AccentViolet) },
                     label = { 
-                        Row(
+                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Security & Permissions", color = MaterialTheme.colorScheme.onSurface)
+                            Text("Permissions", color = Color.White, style = MaterialTheme.typography.bodyLarge)
                             if (hasUsageStats && hasOverlay && isBatteryUnrestricted) {
-                                Icon(Icons.Filled.CheckCircle, contentDescription = "Configured", tint = NeonGreen, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.CheckCircle, contentDescription = "Configured", tint = NeonGreen, modifier = Modifier.size(16.dp))
                             } else {
-                                Icon(Icons.Filled.Warning, contentDescription = "Action needed", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Warning, contentDescription = "Action needed", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                             }
                         }
                     },
                     selected = false,
                     onClick = { 
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.BackupSecurity.route)
+                         scope.launch { drawerState.close() }
+                                                navController.navigate(Screen.Permissions.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
-
+                
                 NavigationDrawerItem(
-                    label = { Text("App Settings", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    icon = { Icon(Icons.Filled.Palette, contentDescription = null, tint = AccentCyan) },
+                    label = { Text("App Settings", color = Color.White, style = MaterialTheme.typography.bodyLarge) },
                     selected = false,
                     onClick = { 
-                        scope.launch { drawerState.close() }
-                        navController.navigate(Screen.Settings.route)
+                         scope.launch { drawerState.close() }
+                                                navController.navigate(Screen.Settings.route) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 8.dp))
-
-                // Setup Guide Prompt
+                HorizontalDivider(color = BorderGlass, modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp))
+                
                 NavigationDrawerItem(
-                    label = { Text("Permissions & Battery Guide", color = AccentCyan) },
+                    icon = { Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    label = { Text("Setup Guide", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge) },
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
                         showSetupDialog = true
                     },
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
                 )
             }
@@ -259,7 +322,6 @@ fun MainAppScreen(viewModel: FocusViewModel) {
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 if (!isSessionActive) {
-                    // Top app bar with menu icon to open drawer and elegant non-bold title
                     TopAppBar(
                         title = { 
                             Text(
@@ -282,7 +344,8 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                 }
             },
             bottomBar = {
-                if (currentDestination?.route != Screen.AddRestriction.route && !isSessionActive) {
+                val hideBottomBarRoutes = listOf(Screen.AddRestriction.route, Screen.Security.route, Screen.Permissions.route, Screen.Settings.route)
+                if (currentDestination?.route !in hideBottomBarRoutes && !isSessionActive) {
                     NavigationBar(
                         containerColor = SurfaceDark,
                         contentColor = MaterialTheme.colorScheme.onSurface
@@ -338,6 +401,8 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                     DashboardScreen(
                         restrictions = restrictions,
                         onToggle = { app: com.focusbyrj.app.data.AppRestriction -> viewModel.toggleRestriction(app) },
+                        onDelete = { app: com.focusbyrj.app.data.AppRestriction -> viewModel.deleteRestriction(app) },
+                        onUpdate = { app: com.focusbyrj.app.data.AppRestriction -> viewModel.updateRestriction(app) },
                         isSessionActive = isSessionActive,
                         timeRemaining = timeRemaining,
                         initialTime = initialTime,
@@ -357,10 +422,13 @@ fun MainAppScreen(viewModel: FocusViewModel) {
                 composable(Screen.AddRestriction.route) {
                     AddRestrictionScreen(navController, viewModel)
                 }
-                composable(Screen.BackupSecurity.route) {
-                    BackupSecurityScreen(navController)
+                composable(Screen.Security.route) {
+                    SecurityScreen(navController)
                 }
-                composable(Screen.Settings.route) { com.focusbyrj.app.ui.screens.SettingsScreen() }
+                composable(Screen.Permissions.route) {
+                    PermissionsScreen(navController)
+                }
+                composable(Screen.Settings.route) { com.focusbyrj.app.ui.screens.SettingsScreen(navController) }
             }
         }
     }

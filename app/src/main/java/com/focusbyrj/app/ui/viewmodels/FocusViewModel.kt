@@ -22,7 +22,6 @@ class FocusViewModel(private val repository: AppRepository, application: Applica
     
     private val prefs = application.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
 
-    // Ticker to refresh active schedules every minute
     private val minuteTicker = flow {
         while (true) {
             emit(Unit)
@@ -64,7 +63,6 @@ class FocusViewModel(private val repository: AppRepository, application: Applica
                     val appName = try { pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString() } catch(e: Exception) { pkg }
                     map[pkg] = AppRestriction(pkg, appName, isActiveNow, s.mode, "")
                 } else if (isActiveNow) {
-                    // If it's already in the map (e.g. manually off), but schedule is active, force it on
                     val existing = map[pkg]!!
                     map[pkg] = existing.copy(isRestricted = true, mode = s.mode)
                 }
@@ -111,7 +109,7 @@ class FocusViewModel(private val repository: AppRepository, application: Applica
     private val _isSessionActive = kotlinx.coroutines.flow.MutableStateFlow(false)
     val isSessionActive: StateFlow<Boolean> = _isSessionActive
 
-    private val _timeRemaining = kotlinx.coroutines.flow.MutableStateFlow(25 * 60L) // 25 minutes in seconds
+    private val _timeRemaining = kotlinx.coroutines.flow.MutableStateFlow(25 * 60L)
     val timeRemaining: StateFlow<Long> = _timeRemaining
 
     private val _initialTime = kotlinx.coroutines.flow.MutableStateFlow(25 * 60L)
@@ -170,6 +168,18 @@ class FocusViewModel(private val repository: AppRepository, application: Applica
     fun addRestriction(app: AppRestriction) {
         viewModelScope.launch {
             repository.saveApp(app)
+        }
+    }
+
+    fun updateRestriction(app: AppRestriction) {
+        viewModelScope.launch {
+            repository.saveApp(app)
+        }
+    }
+
+    fun deleteRestriction(app: AppRestriction) {
+        viewModelScope.launch {
+            repository.deleteRestriction(app)
         }
     }
 }

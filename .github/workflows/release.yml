@@ -3,8 +3,8 @@ name: Build & Release APK
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*'            # Runs automatically ONLY when you push a version tag
+  workflow_dispatch:    # Enables the manual "Run workflow" button in GitHub Actions
 
 permissions:
   contents: write
@@ -42,6 +42,15 @@ jobs:
         run: |
           gradle assembleRelease --no-daemon
 
+      # Available every time you run manually
+      - name: Upload APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: focus-by-rj-signed-apk
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 14
+
+      # Only triggers when an actual Git tag (v*) is pushed
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')

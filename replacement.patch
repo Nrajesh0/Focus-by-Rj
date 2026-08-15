@@ -1,0 +1,56 @@
+--- app/src/main/java/com/focusbyrj/app/ui/screens/DashboardScreen.kt
++++ app/src/main/java/com/focusbyrj/app/ui/screens/DashboardScreen.kt
+@@ -255,14 +255,39 @@
+             title = { Text("Set Focus Duration") },
+             text = {
+                 Column {
+-                    Text("Duration: ${sliderValue.toInt()} minutes", color = MaterialTheme.colorScheme.onSurfaceVariant)
+-                    Spacer(modifier = Modifier.height(16.dp))
+-                    Slider(
+-                        value = sliderValue,
+-                        onValueChange = { sliderValue = it },
+-                        valueRange = 5f..120f,
+-                        steps = 23,
+-                        colors = SliderDefaults.colors(thumbColor = AccentCyan, activeTrackColor = AccentViolet)
+-                    )
++                    Row(
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .background(Color(0xFF1E1E2E), RoundedCornerShape(16.dp))
++                            .padding(16.dp),
++                        verticalAlignment = Alignment.CenterVertically,
++                        horizontalArrangement = Arrangement.SpaceBetween
++                    ) {
++                        IconButton(
++                            onClick = { if (sliderValue > 5f) sliderValue -= 5f },
++                            modifier = Modifier
++                                .size(48.dp)
++                                .background(Color(0xFF2A2A3A), RoundedCornerShape(12.dp))
++                        ) {
++                            Icon(androidx.compose.material.icons.Icons.Filled.Remove, contentDescription = "Decrease", tint = Color.White)
++                        }
++                        
++                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
++                            Text(
++                                text = "${sliderValue.toInt()}",
++                                style = MaterialTheme.typography.displaySmall.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
++                                color = Color.White
++                            )
++                            Text(
++                                text = "minutes",
++                                style = MaterialTheme.typography.labelLarge,
++                                color = Color.Gray
++                            )
++                        }
++
++                        IconButton(
++                            onClick = { if (sliderValue < 120f) sliderValue += 5f },
++                            modifier = Modifier
++                                .size(48.dp)
++                                .background(Color(0xFF2A2A3A), RoundedCornerShape(12.dp))
++                        ) {
++                            Icon(androidx.compose.material.icons.Icons.Filled.Add, contentDescription = "Increase", tint = Color.White)
++                        }
++                    }
+                 }
+             },

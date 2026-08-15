@@ -53,13 +53,11 @@ object BlockOverlayManager {
     fun showBlockScreen(context: Context, packageName: String, quote: String, mode: String) {
         if (isShowing && currentPackageName == packageName) return
 
-        // If overlay permission is granted, display the overlay window
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
             val success = tryShowOverlay(context, packageName, quote, mode)
             if (success) return
         }
 
-        // Fallback: Launch BlockActivity directly
         launchBlockActivity(context, packageName, quote, mode)
     }
 
@@ -83,7 +81,6 @@ object BlockOverlayManager {
         return try {
             windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             
-            // Fullscreen params extending completely under status bar, nav bar, and display cutout
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -114,7 +111,6 @@ object BlockOverlayManager {
 
             val isHardMode = mode.equals("HARD", ignoreCase = true)
 
-            // Resolve app name & icon
             var appName = packageName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
             var appIcon: Drawable? = null
             try {
@@ -123,7 +119,6 @@ object BlockOverlayManager {
                 appName = pm.getApplicationLabel(info).toString()
                 appIcon = pm.getApplicationIcon(info)
             } catch (e: Exception) {
-                // Keep fallback
             }
 
             val totalSoftLockSeconds = context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
@@ -134,7 +129,6 @@ object BlockOverlayManager {
             val displayedQuote = FocusQuotes.getQuoteOrDefault(quote)
             timeLeft = if (isHardMode) 0 else totalSoftLockSeconds
 
-            // Root Scrollable layout spanning 100% of display in pure deep black shades
             val scrollView = object : ScrollView(context) {
                 override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
                     if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
@@ -176,7 +170,6 @@ object BlockOverlayManager {
             }
             scrollView.addView(centerContainer)
 
-            // THE SINGLE TRANSLUCENT OBSIDIAN GLASS BOX
             val singleCard = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -193,7 +186,6 @@ object BlockOverlayManager {
             )
             centerContainer.addView(singleCard, cardParams)
 
-            // 1. App Icon
             if (appIcon != null) {
                 val iconView = ImageView(context).apply {
                     setImageDrawable(appIcon)
@@ -210,7 +202,6 @@ object BlockOverlayManager {
                 singleCard.addView(iconView, iconParams)
             }
 
-            // 2. App Name
             val nameText = TextView(context).apply {
                 text = appName
                 textSize = 18f
@@ -220,7 +211,6 @@ object BlockOverlayManager {
             }
             singleCard.addView(nameText)
 
-            // 3. Header title
             val titleText = TextView(context).apply {
                 text = if (isHardMode) "Focus Shielded." else "Pause & Reflect."
                 textSize = 22f
@@ -231,7 +221,6 @@ object BlockOverlayManager {
             }
             singleCard.addView(titleText)
 
-            // 4. Quote Section
             val quoteText = TextView(context).apply {
                 text = "“$displayedQuote”"
                 textSize = 14f
@@ -243,7 +232,6 @@ object BlockOverlayManager {
             }
             singleCard.addView(quoteText)
 
-            // 5. Actions / Timer container
             val dynamicActionLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -281,7 +269,6 @@ object BlockOverlayManager {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ))
             } else {
-                // Sleek numeric countdown without circles
                 val timeNum = TextView(context).apply {
                     text = if (timeLeft < 10) "00:0$timeLeft" else "00:$timeLeft"
                     textSize = 34f
@@ -292,7 +279,6 @@ object BlockOverlayManager {
                 }
                 dynamicActionLayout.addView(timeNum)
 
-                // Linear minimal progress line
                 val progressBar = View(context).apply {
                     background = GradientDrawable().apply {
                         setColor(Color.parseColor("#6366F1"))
@@ -336,7 +322,6 @@ object BlockOverlayManager {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ))
 
-                // Timer Countdown
                 countdownRunnable = object : Runnable {
                     override fun run() {
                         if (timeLeft > 1) {
@@ -344,7 +329,6 @@ object BlockOverlayManager {
                             timeNum.text = if (timeLeft < 10) "00:0$timeLeft" else "00:$timeLeft"
                             handler.postDelayed(this, 1000)
                         } else {
-                            // TIMER FINISHED: Elegant "Pause Completed"
                             timeLeft = 0
                             dynamicActionLayout.removeAllViews()
 

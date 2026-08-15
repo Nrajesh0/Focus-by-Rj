@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.graphics.vector.ImageVector
 
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 
@@ -34,6 +35,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Analytics : Screen("analytics", "Heatmap", Icons.Filled.Analytics)
     object Time : Screen("time", "Time", Icons.Filled.DateRange)
     object AddRestriction : Screen("add_restriction", "Add", Icons.Filled.Add)
-    object BackupSecurity : Screen("backup_security", "Security", Icons.Filled.Lock)
+    object Security : Screen("security", "Security", Icons.Filled.Security)
+    object Permissions : Screen("permissions", "Permissions", Icons.Filled.Lock)
     object Settings : Screen("settings", "Settings", Icons.Filled.Settings)
 }

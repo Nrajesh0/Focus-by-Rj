@@ -87,15 +87,12 @@ object DeviceStatsHelper {
         val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
         val rawHealthInt = intent.getIntExtra(BatteryManager.EXTRA_HEALTH, BatteryManager.BATTERY_HEALTH_UNKNOWN)
 
-        // Apple-style Maximum Capacity calculation after battery deterioration:
-        // Reads voltage, health, and battery telemetry to derive maximum health % after chemical aging.
         val healthPercent = when {
             rawHealthInt == BatteryManager.BATTERY_HEALTH_DEAD -> 55
             rawHealthInt == BatteryManager.BATTERY_HEALTH_OVERHEAT -> 75
             rawHealthInt == BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> 72
             rawHealthInt == BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> 60
             else -> {
-                // Calculate persistent, realistic health deterioration (e.g. 88%-92%)
                 val base = if (voltage > 0) {
                     88 + ((voltage % 600) / 100)
                 } else 89
@@ -103,7 +100,6 @@ object DeviceStatsHelper {
             }
         }
 
-        // Real-life remaining capacity = (Raw Charge Level %) * (Maximum Capacity Health %) / 100
         val realRemaining = (rawPercentage.toFloat() * healthPercent.toFloat()) / 100f
 
         val healthLabel = when (rawHealthInt) {

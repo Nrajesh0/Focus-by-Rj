@@ -159,10 +159,10 @@ fun HeatmapWidget(
                             val levelIndex = when {
                                 isFuture -> 0
                                 usageMs == 0L -> 0
-                                usageMs < 15 * 60 * 1000L -> 1 // < 15 min
-                                usageMs < 30 * 60 * 1000L -> 2 // < 30 min
-                                usageMs < 60 * 60 * 1000L -> 3 // < 1 hour
-                                else -> 4                      // >= 1 hour
+                                usageMs < 15 * 60 * 1000L -> 1
+                                usageMs < 30 * 60 * 1000L -> 2
+                                usageMs < 60 * 60 * 1000L -> 3
+                                else -> 4                     
                             }
                             
                             val color = levels[levelIndex]

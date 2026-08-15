@@ -69,7 +69,6 @@ class BlockActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Full screen edge-to-edge covering display notch, camera cutout, navigation bar, and status bars completely
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -146,11 +145,9 @@ fun BlockScreenContent(
     val isHardMode = mode.equals("HARD", ignoreCase = true)
     val context = LocalContext.current
     
-    // Resolve app name & icon
     var appLabel by remember(packageName) { mutableStateOf(packageName) }
     var appIconDrawable by remember(packageName) { mutableStateOf<Drawable?>(null) }
     
-    // Displayed quote (custom or picked from the 30 default quotes)
     val displayedQuote = remember(quote) {
         FocusQuotes.getQuoteOrDefault(quote)
     }
@@ -193,7 +190,6 @@ fun BlockScreenContent(
         onExit()
     }
 
-    // Full screen outer canvas in deep obsidian shades of black covering 100% of display
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -208,7 +204,6 @@ fun BlockScreenContent(
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Centered scrollable container
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -219,7 +214,6 @@ fun BlockScreenContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // THE SINGLE TRANSLUCENT OBSIDIAN GLASS BOX
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,7 +227,6 @@ fun BlockScreenContent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // 1. Blocked App Icon
                     Box(
                         modifier = Modifier
                             .size(68.dp)
@@ -262,7 +255,6 @@ fun BlockScreenContent(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 2. Blocked App Name
                     Text(
                         text = appLabel,
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -275,7 +267,6 @@ fun BlockScreenContent(
 
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // 3. Header title
                     Text(
                         text = if (isHardMode) "Focus Shielded." else "Pause & Reflect.",
                         style = MaterialTheme.typography.headlineSmall.copy(
@@ -288,7 +279,6 @@ fun BlockScreenContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 4. ELEGANT QUOTE SECTION (Custom Quote or 30 defaults)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -310,7 +300,6 @@ fun BlockScreenContent(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // 5. Mode Specific Layout / Actions
                     if (isHardMode) {
                         Text(
                             text = "This app is strictly locked to honor your focus commitment.",
@@ -339,14 +328,12 @@ fun BlockScreenContent(
                             )
                         }
                     } else {
-                        // Soft mode
                         AnimatedContent(
                             targetState = timeLeft > 0,
                             transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(250)) },
                             label = "TimerTransition"
                         ) { isCountingDown ->
                             if (isCountingDown) {
-                                // TIMER RUNNING: Sleek, elegant countdown without circles
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.fillMaxWidth()
@@ -356,7 +343,6 @@ fun BlockScreenContent(
                                         label = "ProgressAnimation"
                                     )
 
-                                    // Refined countdown digits
                                     Text(
                                         text = if (timeLeft < 10) "00:0$timeLeft" else "00:$timeLeft",
                                         style = MaterialTheme.typography.displaySmall.copy(
@@ -369,7 +355,6 @@ fun BlockScreenContent(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    // Minimalist slim linear progress bar
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth(0.55f)
@@ -421,12 +406,10 @@ fun BlockScreenContent(
                                     }
                                 }
                             } else {
-                                // AFTER TIMER FINISHES: Elegant "Pause Completed"
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    // Elegant status text in soft obsidian theme (no box, no green)
                                     Text(
                                         text = "Pause Completed",
                                         style = MaterialTheme.typography.titleMedium.copy(
@@ -449,7 +432,6 @@ fun BlockScreenContent(
 
                                     Spacer(modifier = Modifier.height(26.dp))
 
-                                    // Primary: Open for set time
                                     Button(
                                         onClick = onUnlock,
                                         modifier = Modifier
@@ -471,7 +453,6 @@ fun BlockScreenContent(
 
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    // Secondary: Exit to Home
                                     OutlinedButton(
                                         onClick = onExit,
                                         modifier = Modifier

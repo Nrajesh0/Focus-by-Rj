@@ -124,7 +124,6 @@ object FocusStatsManager {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (!prefs.contains(KEY_INSTALL_TIME)) {
-            // First time install: explicitly set install timestamp to NOW and streaks to ZERO
             prefs.edit()
                 .putLong(KEY_INSTALL_TIME, System.currentTimeMillis())
                 .putInt(KEY_LONGEST_STREAK, 0)
@@ -160,7 +159,6 @@ object FocusStatsManager {
         val installTime = prefs.getLong(KEY_INSTALL_TIME, System.currentTimeMillis())
         val installCal = Calendar.getInstance().apply { timeInMillis = installTime }
         
-        // Zero-out hour/min for clean day comparison
         installCal.set(Calendar.HOUR_OF_DAY, 0)
         installCal.set(Calendar.MINUTE, 0)
         installCal.set(Calendar.SECOND, 0)
@@ -169,12 +167,10 @@ object FocusStatsManager {
         val dailyMap = mutableMapOf<Int, Long>()
         val cal = Calendar.getInstance()
 
-        // Read last 30 days
         for (i in 0 downTo -30) {
             val dayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, i) }
             val dayOfYear = dayCal.get(Calendar.DAY_OF_YEAR)
 
-            // If day is before install date, it's 0 (fresh install guarantee)
             if (dayCal.before(installCal) && !isSameDay(dayCal, installCal)) {
                 dailyMap[dayOfYear] = 0L
             } else {
@@ -184,7 +180,6 @@ object FocusStatsManager {
             }
         }
 
-        // Calculate Current Streak
         var currentStreak = 0
         val todayCal = Calendar.getInstance()
         val todayMs = dailyMap[todayCal.get(Calendar.DAY_OF_YEAR)] ?: 0L
@@ -192,7 +187,6 @@ object FocusStatsManager {
 
         var startIndex = 0
         if (todayMs < minActiveMs) {
-            // Check if yesterday was active to keep streak alive
             val yestCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
             val yestMs = dailyMap[yestCal.get(Calendar.DAY_OF_YEAR)] ?: 0L
             if (yestMs >= minActiveMs && !yestCal.before(installCal)) {
@@ -217,7 +211,6 @@ object FocusStatsManager {
             }
         }
 
-        // Calculate Longest Streak
         var maxStreak = prefs.getInt(KEY_LONGEST_STREAK, 0)
         var runningStreak = 0
         for (i in -30..0) {

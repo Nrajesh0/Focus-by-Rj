@@ -116,7 +116,6 @@ fun AddRestrictionScreen(navController: NavController, viewModel: FocusViewModel
                     }
                 }
             } else {
-                // Configure Restriction
                 val app = selectedApp!!
                 
                 Box(
@@ -217,23 +216,45 @@ fun AddRestrictionScreen(navController: NavController, viewModel: FocusViewModel
 
 @Composable
 fun ModeSelector(title: String, description: String, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val backgroundColor = if (isSelected) Color(0xFF231D38) else Color(0xFF191C2B)
+    val borderColor = if (isSelected) AccentViolet else Color(0xFF282D42)
+    val titleColor = if (isSelected) Color.White else Color(0xFFCBD5E1)
+    val subtitleColor = if (isSelected) Color(0xFFCBD5E1) else Color(0xFF94A3B8)
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (isSelected) AccentViolet.copy(alpha = 0.2f) else SurfaceDark)
-            .border(2.dp, if (isSelected) AccentViolet else BorderGlass, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(backgroundColor)
+            .border(if (isSelected) 2.dp else 1.dp, borderColor, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .padding(16.dp)
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(title, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = if (isSelected) Color.White else Color.Gray)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = titleColor
+                )
                 if (isSelected) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = AccentCyan,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodySmall,
+                color = subtitleColor
+            )
         }
     }
 }

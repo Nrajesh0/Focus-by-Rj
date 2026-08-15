@@ -17,6 +17,9 @@
 
 package com.focusbyrj.app.ui.screens
 
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+
 import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -30,12 +33,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.navigation.NavController
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -50,7 +55,7 @@ import com.focusbyrj.app.util.FocusStatsManager
 import com.focusbyrj.app.util.HeatmapTheme
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE) }
     
@@ -73,25 +78,40 @@ fun SettingsScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp)
-            .verticalScroll(rememberScrollState())
     ) {
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "Personalize your focus experience & visuals",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(28.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                "Settings",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
+        }
 
-        // Heatmap Palette Section
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Personalize your focus experience & visuals",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(28.dp))
+
         Text(
             text = "Heatmap Palette",
             style = MaterialTheme.typography.titleMedium.copy(color = AccentCyan, letterSpacing = 1.sp),
@@ -118,7 +138,6 @@ fun SettingsScreen() {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Sophisticated Dropdown Anchor Trigger
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -178,7 +197,6 @@ fun SettingsScreen() {
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Current 5-color swatch preview
                                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     currentHeatmapTheme.colors.forEach { color ->
                                         Box(
@@ -201,7 +219,6 @@ fun SettingsScreen() {
                         }
                     }
 
-                    // Dropdown Menu Popover
                     DropdownMenu(
                         expanded = isHeatmapDropdownExpanded,
                         onDismissRequest = { isHeatmapDropdownExpanded = false },
@@ -271,7 +288,6 @@ fun SettingsScreen() {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Live Preview Tonal Scale
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -319,7 +335,6 @@ fun SettingsScreen() {
 
         Spacer(modifier = Modifier.height(28.dp))
         
-        // Appearance Section
         Text(
             text = "Appearance",
             style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp),
@@ -372,7 +387,6 @@ fun SettingsScreen() {
         
         Spacer(modifier = Modifier.height(28.dp))
         
-        // Restrictions Section
         Text(
             text = "Restrictions",
             style = MaterialTheme.typography.titleMedium.copy(color = MaterialTheme.colorScheme.secondary, letterSpacing = 1.sp),
@@ -405,30 +419,50 @@ fun SettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "${softLockDuration}s",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0xFF1E1E2E), RoundedCornerShape(12.dp))
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { 
+                                if (softLockDuration > 5) {
+                                    softLockDuration -= 5
+                                    prefs.edit().putInt("soft_lock_duration", softLockDuration).apply()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(Color(0xFF2A2A3A), RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(androidx.compose.material.icons.Icons.Filled.Remove, contentDescription = "Decrease", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                        
+                        Text(
+                            text = "${softLockDuration}s",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+
+                        IconButton(
+                            onClick = { 
+                                if (softLockDuration < 60) {
+                                    softLockDuration += 5
+                                    prefs.edit().putInt("soft_lock_duration", softLockDuration).apply()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(Color(0xFF2A2A3A), RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(androidx.compose.material.icons.Icons.Filled.Add, contentDescription = "Increase", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Slider(
-                    value = softLockDuration.toFloat(),
-                    onValueChange = { softLockDuration = it.toInt() },
-                    onValueChangeFinished = {
-                        prefs.edit().putInt("soft_lock_duration", softLockDuration).apply()
-                    },
-                    valueRange = 5f..60f,
-                    steps = 10,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.secondary,
-                        activeTrackColor = MaterialTheme.colorScheme.secondary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surface
-                    )
-                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -450,30 +484,50 @@ fun SettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Text(
-                        text = "${softUnlockDuration}m",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0xFF1E1E2E), RoundedCornerShape(12.dp))
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { 
+                                if (softUnlockDuration > 1) {
+                                    softUnlockDuration -= 1
+                                    prefs.edit().putInt("soft_unlock_duration", softUnlockDuration).apply()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(Color(0xFF2A2A3A), RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(androidx.compose.material.icons.Icons.Filled.Remove, contentDescription = "Decrease", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                        
+                        Text(
+                            text = "${softUnlockDuration}m",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+
+                        IconButton(
+                            onClick = { 
+                                if (softUnlockDuration < 60) {
+                                    softUnlockDuration += 1
+                                    prefs.edit().putInt("soft_unlock_duration", softUnlockDuration).apply()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(Color(0xFF2A2A3A), RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(androidx.compose.material.icons.Icons.Filled.Add, contentDescription = "Increase", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Slider(
-                    value = softUnlockDuration.toFloat(),
-                    onValueChange = { softUnlockDuration = it.toInt() },
-                    onValueChangeFinished = {
-                        prefs.edit().putInt("soft_unlock_duration", softUnlockDuration).apply()
-                    },
-                    valueRange = 1f..60f,
-                    steps = 58,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.secondary,
-                        activeTrackColor = MaterialTheme.colorScheme.secondary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surface
-                    )
-                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -512,4 +566,5 @@ fun SettingsScreen() {
 
         Spacer(modifier = Modifier.height(64.dp))
     }
+}
 }

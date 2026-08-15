@@ -114,15 +114,13 @@ class FocusBlockerService : Service() {
     private fun startAppMonitoringLoop() {
         scope.launch {
             while (isActive) {
-                try {
+                kotlin.runCatching {
                     val currentPackage = getForegroundPackage()
                     if (!currentPackage.isNullOrBlank()) {
                         checkAndBlockApp(currentPackage)
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
-                delay(350L) // Fast polling for responsive blocking
+                delay(350L)
             }
         }
     }
@@ -133,12 +131,10 @@ class FocusBlockerService : Service() {
         scope.launch {
             delay(2000L)
             while (isActive) {
-                try {
+                kotlin.runCatching {
                     checkRoutinesAndNotify()
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
-                delay(60000L) // Check every minute
+                delay(60000L)
             }
         }
     }
@@ -215,14 +211,13 @@ class FocusBlockerService : Service() {
         val now = System.currentTimeMillis()
         if (now - lastHomePackagesCheck < 30000L && homePackages.isNotEmpty()) return
         lastHomePackagesCheck = now
-        try {
+        
+        kotlin.runCatching {
             val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             val list = packageManager.queryIntentActivities(homeIntent, 0)
             for (info in list) {
                 info.activityInfo?.packageName?.let { homePackages.add(it) }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -253,7 +248,6 @@ class FocusBlockerService : Service() {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
         val now = System.currentTimeMillis()
 
-        // 1. Query recent UsageEvents
         val events = usm.queryEvents(now - 1000 * 10, now)
         val event = UsageEvents.Event()
         var latestPackage: String? = null
@@ -270,7 +264,6 @@ class FocusBlockerService : Service() {
         }
 
         if (latestPackage != null) {
-            // Reject stale events from before the user clicked 'Exit to Home'
             if (latestPackage == FocusExitTracker.lastExitedPackage && latestTime <= FocusExitTracker.exitTimestamp) {
                 return null
             }
@@ -281,7 +274,6 @@ class FocusBlockerService : Service() {
             return latestPackage
         }
 
-        // 2. Fallback to queryUsageStats
         val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, now - 1000 * 30, now)
         if (!stats.isNullOrEmpty()) {
             val mostRecent = stats.maxByOrNull { it.lastTimeUsed }
@@ -313,7 +305,6 @@ class FocusBlockerService : Service() {
             return
         }
 
-        // If user just exited this app to Home, suppress blocking until they actively reopen
         if (FocusExitTracker.isExitSuppressed(packageName)) {
             return
         }
@@ -329,7 +320,6 @@ class FocusBlockerService : Service() {
         var blockQuote = ""
         var blockMode = "HARD"
 
-        // 1. Check 24/7 restrictions
         val restriction = db.appRestrictionDao().getRestriction(packageName)
         if (restriction != null && restriction.isRestricted) {
             shouldBlock = true
@@ -337,7 +327,6 @@ class FocusBlockerService : Service() {
             blockMode = restriction.mode
         }
 
-        // 2. Check scheduled routines
         if (!shouldBlock) {
             for (schedule in activeRoutines.values) {
                 if (schedule.appsToBlock.split(",").contains(packageName)) {
@@ -349,7 +338,6 @@ class FocusBlockerService : Service() {
             }
         }
 
-        // 3. Check active Focus / Deep Work session
         val prefs = applicationContext.getSharedPreferences("focus_prefs", Context.MODE_PRIVATE)
         val isSessionActive = prefs.getBoolean("isSessionActive", false)
         if (!shouldBlock && isSessionActive && restriction != null) {
@@ -360,11 +348,7 @@ class FocusBlockerService : Service() {
 
         if (shouldBlock) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                try {
-                    BlockOverlayManager.showBlockScreen(this@FocusBlockerService, packageName, blockQuote, blockMode)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                BlockOverlayManager.showBlockScreen(this@FocusBlockerService, packageName, blockQuote, blockMode)
             }
         } else if (BlockOverlayManager.isShowing) {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -388,15 +372,13 @@ class FocusBlockerService : Service() {
         private const val NOTIFICATION_ID = 1001
 
         fun startService(context: Context) {
-            try {
+            kotlin.runCatching {
                 val intent = Intent(context, FocusBlockerService::class.java)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {
                     context.startService(intent)
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }
