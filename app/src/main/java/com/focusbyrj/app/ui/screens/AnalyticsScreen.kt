@@ -130,7 +130,7 @@ fun HeatmapWidget(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "ACTIVITY LAST 30 DAYS",
+                    "ACTIVITY HEATMAP",
                     style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -140,20 +140,38 @@ fun HeatmapWidget(
                     color = theme.colors.last()
                 )
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Darker squares indicate longer focus sessions.",
+                style = MaterialTheme.typography.bodySmall.copy(lineHeight = 16.sp),
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(18.dp))
             
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.height((24 * 7 + 6 * 6).dp)) {
+                    val days = listOf("S", "M", "T", "W", "T", "F", "S")
+                    days.forEach { d ->
+                        Box(modifier = Modifier.height(24.dp), contentAlignment = Alignment.Center) {
+                            Text(d, color = Color.Gray, fontSize = 10.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                
                 val levels = theme.colors
                 val todayCalendar = Calendar.getInstance()
                 
-                for (week in 4 downTo 0) {
+                for (weekIndex in 4 downTo 0) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        for (dayOfWeek in 0 until 7) {
+                        for (dayOfWeek in 1..7) {
                             val targetCal = Calendar.getInstance()
-                            targetCal.add(Calendar.DAY_OF_YEAR, -(week * 7 + (6 - dayOfWeek)))
+                            targetCal.set(Calendar.DAY_OF_WEEK, dayOfWeek)
+                            targetCal.add(Calendar.WEEK_OF_YEAR, -weekIndex)
+                            
                             val dayOfYear = targetCal.get(Calendar.DAY_OF_YEAR)
                             
-                            val isFuture = targetCal.after(todayCalendar)
+                            val isFuture = targetCal.after(todayCalendar) && targetCal.get(Calendar.DAY_OF_YEAR) != todayCalendar.get(Calendar.DAY_OF_YEAR)
                             
                             val usageMs = dailyUsage[dayOfYear] ?: 0L
                             val levelIndex = when {
@@ -162,7 +180,7 @@ fun HeatmapWidget(
                                 usageMs < 15 * 60 * 1000L -> 1
                                 usageMs < 30 * 60 * 1000L -> 2
                                 usageMs < 60 * 60 * 1000L -> 3
-                                else -> 4                     
+                                else -> 4
                             }
                             
                             val color = levels[levelIndex]
@@ -174,14 +192,6 @@ fun HeatmapWidget(
                             )
                         }
                     }
-                }
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.height((24 * 7 + 6 * 6).dp)) {
-                    Text("Mon", color = Color.Gray, fontSize = 10.sp)
-                    Text("Wed", color = Color.Gray, fontSize = 10.sp)
-                    Text("Fri", color = Color.Gray, fontSize = 10.sp)
                 }
             }
             
