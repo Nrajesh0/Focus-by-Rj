@@ -17,6 +17,9 @@
 
 package com.focusbyrj.app.ui.screens
 
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.Image
+import com.focusbyrj.app.util.ImageUtils
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
@@ -392,6 +395,7 @@ fun MultiAppSelectorScreen(
     var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
     var currentSelection by remember { mutableStateOf(selectedApps) }
     var isLoading by remember { mutableStateOf(true) }
+    var selectedCategory by remember { mutableStateOf(AppCategory.ALL) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
@@ -400,7 +404,7 @@ fun MultiAppSelectorScreen(
             val appsList = packages.mapNotNull { info ->
                 val appName = pm.getApplicationLabel(info).toString()
                 if (info.packageName != context.packageName && pm.getLaunchIntentForPackage(info.packageName) != null) {
-                    InstalledApp(info.packageName, appName)
+                    InstalledApp(info.packageName, appName, getCategoryForApp(info, info.packageName))
                 } else null
             }.sortedBy { it.appName.lowercase() }
             
@@ -427,8 +431,39 @@ fun MultiAppSelectorScreen(
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AccentCyan) }
         } else {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(AppCategory.entries.toTypedArray()) { category ->
+                    val isCatSelected = selectedCategory == category
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isCatSelected) AccentViolet else SurfaceDark)
+                            .clickable { selectedCategory = category }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = category.title,
+                            color = if (isCatSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            }
+            
+            val filteredApps = remember(installedApps, selectedCategory) {
+                if (selectedCategory == AppCategory.ALL) installedApps
+                else installedApps.filter { it.category == selectedCategory }
+            }
+
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
-                items(installedApps) { app ->
+                items(filteredApps) { app ->
+                    val pm = context.packageManager
+                    val icon = remember(app.packageName) { ImageUtils.getAppIcon(pm, app.packageName) }
                     val isSelected = currentSelection.contains(app.packageName)
                     Box(
                         modifier = Modifier
@@ -445,7 +480,20 @@ fun MultiAppSelectorScreen(
                             .padding(16.dp)
                     ) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(app.appName, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (icon != null) {
+                                    Image(
+                                        bitmap = icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                }
+                                Column {
+                                    Text(app.appName, color = Color.White, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                                    Text(app.category.title, color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                             if (isSelected) {
                                 Icon(Icons.Filled.Check, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(20.dp))
                             }

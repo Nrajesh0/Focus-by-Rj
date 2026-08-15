@@ -1,0 +1,232 @@
+--- app/src/main/java/com/focusbyrj/app/ui/screens/AddRestrictionScreen.kt
++++ app/src/main/java/com/focusbyrj/app/ui/screens/AddRestrictionScreen.kt
+@@ -3,13 +3,18 @@
+ import android.content.pm.PackageManager
+ import androidx.compose.foundation.background
+ import androidx.compose.foundation.border
++import androidx.compose.foundation.Image
+ import androidx.compose.foundation.clickable
+ import androidx.compose.foundation.layout.*
+ import androidx.compose.foundation.lazy.LazyColumn
++import androidx.compose.foundation.lazy.LazyRow
+ import androidx.compose.foundation.lazy.items
+ import androidx.compose.foundation.shape.RoundedCornerShape
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.automirrored.filled.ArrowBack
+ import androidx.compose.material.icons.filled.Check
+ import androidx.compose.material3.*
+ import androidx.compose.runtime.*
+@@ -21,12 +26,14 @@
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
++import androidx.compose.ui.graphics.ImageBitmap
+ import androidx.navigation.NavController
+ import com.focusbyrj.app.data.AppRestriction
+ import com.focusbyrj.app.ui.theme.AccentCyan
+ import com.focusbyrj.app.ui.theme.AccentViolet
+ import com.focusbyrj.app.ui.theme.BorderGlass
+ import com.focusbyrj.app.ui.theme.MidnightBlack
+ import com.focusbyrj.app.ui.theme.SurfaceDark
+ import com.focusbyrj.app.ui.theme.SurfaceVariantDark
+ import com.focusbyrj.app.ui.viewmodels.FocusViewModel
++import com.focusbyrj.app.util.ImageUtils
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.withContext
+ 
+-data class InstalledApp(val packageName: String, val appName: String)
++enum class AppCategory(val title: String) {
++    ALL("All"),
++    SOCIAL("Social"),
++    PAYMENT("Finance"),
++    GAMES("Games"),
++    UTILITY("Utility"),
++    OTHERS("Others")
++}
++
++fun getCategoryForApp(appInfo: android.content.pm.ApplicationInfo, packageName: String): AppCategory {
++    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
++        when (appInfo.category) {
++            android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> return AppCategory.SOCIAL
++            android.content.pm.ApplicationInfo.CATEGORY_GAME -> return AppCategory.GAMES
++            android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> return AppCategory.UTILITY
++        }
++    }
++    
++    val lowerPkg = packageName.lowercase()
++    if (lowerPkg.contains("whatsapp") || lowerPkg.contains("instagram") || 
++        lowerPkg.contains("facebook") || lowerPkg.contains("twitter") || 
++        lowerPkg.contains("tiktok") || lowerPkg.contains("snapchat") ||
++        lowerPkg.contains("reddit") || lowerPkg.contains("telegram") ||
++        lowerPkg.contains("discord")) {
++        return AppCategory.SOCIAL
++    }
++    
++    if (lowerPkg.contains("pay") || lowerPkg.contains("bank") || 
++        lowerPkg.contains("cash") || lowerPkg.contains("wallet") ||
++        lowerPkg.contains("paypal") || lowerPkg.contains("venmo") ||
++        lowerPkg.contains("stripe") || lowerPkg.contains("finance")) {
++        return AppCategory.PAYMENT
++    }
++    
++    if (lowerPkg.contains("game") || lowerPkg.contains("unity") || 
++        lowerPkg.contains("unreal") || lowerPkg.contains("roblox") ||
++        lowerPkg.contains("mojang") || lowerPkg.contains("ea") ||
++        lowerPkg.contains("supercell") || lowerPkg.contains("king") ||
++        lowerPkg.contains("epic")) {
++        return AppCategory.GAMES
++    }
++    
++    if (lowerPkg.contains("tool") || lowerPkg.contains("util") || 
++        lowerPkg.contains("calculator") || lowerPkg.contains("calendar") ||
++        lowerPkg.contains("clock") || lowerPkg.contains("camera") ||
++        lowerPkg.contains("weather") || lowerPkg.contains("notes") ||
++        lowerPkg.contains("file") || lowerPkg.contains("settings") ||
++        lowerPkg.contains("chrome") || lowerPkg.contains("browser") || lowerPkg.contains("drive")) {
++        return AppCategory.UTILITY
++    }
++    
++    return AppCategory.OTHERS
++}
++
++data class InstalledApp(val packageName: String, val appName: String, val category: AppCategory)
+ 
+ @OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun AddRestrictionScreen(navController: NavController, viewModel: FocusViewModel) {
+     val context = LocalContext.current
+     var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
+     var selectedApp by remember { mutableStateOf<InstalledApp?>(null) }
++    var selectedCategory by remember { mutableStateOf(AppCategory.ALL) }
+     var selectedMode by remember { mutableStateOf("HARD") }
+     var customQuote by remember { mutableStateOf("") }
+     var isLoading by remember { mutableStateOf(true) }
+ 
+     LaunchedEffect(Unit) {
+         withContext(Dispatchers.IO) {
+             val pm = context.packageManager
+             val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+             val apps = packages
+                 .filter { pm.getLaunchIntentForPackage(it.packageName) != null && it.packageName != context.packageName }
+-                .map { InstalledApp(it.packageName, it.loadLabel(pm).toString()) }
++                .map { InstalledApp(it.packageName, it.loadLabel(pm).toString(), getCategoryForApp(it, it.packageName)) }
+                 .sortedBy { it.appName }
+             installedApps = apps
+             isLoading = false
+         }
+     }
+ 
+@@ -92,23 +161,54 @@
+                         CircularProgressIndicator(color = AccentViolet)
+                     }
+                 } else {
++                    LazyRow(
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .padding(bottom = 16.dp),
++                        horizontalArrangement = Arrangement.spacedBy(8.dp)
++                    ) {
++                        items(AppCategory.entries.toTypedArray()) { category ->
++                            val isSelected = selectedCategory == category
++                            Box(
++                                modifier = Modifier
++                                    .clip(RoundedCornerShape(20.dp))
++                                    .background(if (isSelected) AccentViolet else SurfaceDark)
++                                    .clickable { selectedCategory = category }
++                                    .padding(horizontal = 16.dp, vertical = 8.dp)
++                            ) {
++                                Text(
++                                    text = category.title,
++                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
++                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
++                                )
++                            }
++                        }
++                    }
++
++                    val filteredApps = remember(installedApps, selectedCategory) {
++                        if (selectedCategory == AppCategory.ALL) {
++                            installedApps
++                        } else {
++                            installedApps.filter { it.category == selectedCategory }
++                        }
++                    }
++
+                     LazyColumn(
+                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                         modifier = Modifier.weight(1f)
+                     ) {
+-                        items(installedApps) { app ->
++                        items(filteredApps) { app ->
++                            val pm = context.packageManager
++                            val icon = remember(app.packageName) { ImageUtils.getAppIcon(pm, app.packageName) }
+                             Box(
+                                 modifier = Modifier
+                                     .fillMaxWidth()
+                                     .clip(RoundedCornerShape(16.dp))
+                                     .background(SurfaceDark)
+                                     .border(1.dp, BorderGlass, RoundedCornerShape(16.dp))
+                                     .clickable { selectedApp = app }
+-                                    .padding(16.dp)
++                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                             ) {
+-                                Text(
+-                                    text = app.appName,
+-                                    style = MaterialTheme.typography.bodyLarge,
+-                                    color = Color.White
+-                                )
++                                Row(verticalAlignment = Alignment.CenterVertically) {
++                                    if (icon != null) {
++                                        Image(
++                                            bitmap = icon,
++                                            contentDescription = null,
++                                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))
++                                        )
++                                        Spacer(modifier = Modifier.width(16.dp))
++                                    }
++                                    Column {
++                                        Text(
++                                            text = app.appName,
++                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
++                                            color = Color.White
++                                        )
++                                        Text(
++                                            text = app.category.title,
++                                            style = MaterialTheme.typography.labelSmall,
++                                            color = Color.Gray
++                                        )
++                                    }
++                                }
+                             }
+                         }
+                     }
+@@ -118,17 +218,29 @@
+             } else {
+                 val app = selectedApp!!
+                 
++                val pm = context.packageManager
++                val icon = remember(app.packageName) { ImageUtils.getAppIcon(pm, app.packageName) }
++                
+                 Box(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .clip(RoundedCornerShape(24.dp))
+                         .background(SurfaceVariantDark)
+                         .border(1.dp, BorderGlass, RoundedCornerShape(24.dp))
+                         .padding(24.dp)
+                 ) {
+                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
++                        if (icon != null) {
++                            Image(
++                                bitmap = icon,
++                                contentDescription = null,
++                                modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp))
++                            )
++                            Spacer(modifier = Modifier.height(16.dp))
++                        }
+                         Text(app.appName, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color.White)
+-                        Text(app.packageName, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
++                        Text(app.category.title, style = MaterialTheme.typography.labelMedium, color = AccentViolet)
+                         Spacer(modifier = Modifier.height(8.dp))
+                         TextButton(onClick = { selectedApp = null }) {
+                             Text("Change App", color = AccentCyan)
