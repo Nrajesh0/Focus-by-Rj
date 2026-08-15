@@ -1,0 +1,69 @@
+# Privacy Policy for Focus by RJ
+
+**Last Updated:** August 15, 2026
+
+Focus by RJ ("we", "our", or "the app") is committed to total privacy and transparency. This Privacy Policy outlines how the application (`com.focusbyrj.app`) operates and explains the device permissions required to provide its features.
+
+---
+
+## 1. 100% Offline & Zero Data Collection
+Focus by RJ is designed from the ground up to protect your privacy:
+* **No Internet Access:** The application does not request network permissions (`android.permission.INTERNET`). The app is physically incapable of transmitting data off your device or connecting to external servers.
+* **No Analytics or Third-Party SDKs:** The application does not include any third-party tracking, analytics, crash reporting, or advertising frameworks (such as Firebase, AdMob, or commercial trackers).
+* **Local Storage Only:** All your focus stats, streaks, timer configurations, and blocked app preferences are stored exclusively on your device using a local Room SQLite database.
+
+---
+
+## 2. Permissions Used & Purpose
+To enable focus timers, app restriction, and mindful interventions, Focus by RJ requests the following Android permissions:
+
+* **Query All Packages (`QUERY_ALL_PACKAGES`) & Usage Stats (`PACKAGE_USAGE_STATS`):**
+  * *Purpose:* Required strictly on-device to list installed applications so you can choose which apps to restrict, and to detect when a blocked app is opened during an active focus session.
+  * *Data Handling:* Processed locally in real time; never logged, exported, or transmitted.
+
+* **Display Over Other Apps (`SYSTEM_ALERT_WINDOW`) & Hide Overlay Windows (`HIDE_OVERLAY_WINDOWS`):**
+  * *Purpose:* Displays the mindful countdown screen or blocking overlay over restricted applications when launched.
+
+* **Device Administrator (`BIND_DEVICE_ADMIN`):**
+  * *Purpose:* Powers the optional "Strict Mode" feature to prevent bypassing active focus rules or prematurely uninstalling the app while a locked timer session is active.
+  * *Control:* Activated only with your explicit consent in system settings, and can be disabled whenever no strict session is active.
+
+* **Foreground Service (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE`):**
+  * *Purpose:* Keeps the focus timer and app-monitoring service running reliably in the background during active sessions.
+
+* **Notification Policy Access (`ACCESS_NOTIFICATION_POLICY`) & Post Notifications (`POST_NOTIFICATIONS`):**
+  * *Purpose:* Allows the app to enable Do Not Disturb (DND) during active focus blocks to silence distracting notifications, and to post focus timer status alerts.
+
+* **Run at Startup (`RECEIVE_BOOT_COMPLETED`):**
+  * *Purpose:* Restores active focus session schedules and persistent rules after a device reboot.
+
+* **Ignore Battery Optimizations (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`):**
+  * *Purpose:* Prevents the system battery manager from killing the active focus timer in the background.
+
+---
+
+## 3. Third-Party App Distribution Platforms
+Focus by RJ is distributed through application marketplaces (such as Indus Appstore). These platforms may collect basic store-level telemetry, install counts, and device compatibility metrics under their own independent terms of service and privacy policies. Focus by RJ does not collect, receive, or access any platform-level data.
+
+---
+
+## 4. Data Storage, Retention & Deletion
+Because all data resides strictly inside your local device storage:
+* Clearing the app's cache or data via your Android device settings immediately and permanently deletes all stored statistics, streaks, and preferences.
+* Uninstalling the app completely removes all local database records from your device.
+
+---
+
+## 5. Children’s Privacy
+Focus by RJ does not collect personal information from any user, including children under the age of 13. The app is completely offline and safe for all audiences.
+
+---
+
+## 6. Changes to This Privacy Policy
+Any updates to this Privacy Policy will be posted directly to this page with an updated revision date.
+
+---
+
+## 7. Contact Us
+If you have questions or feedback regarding this Privacy Policy, please contact:
+* **Email:** focusbyrj@proton.me
