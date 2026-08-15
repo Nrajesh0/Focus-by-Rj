@@ -113,7 +113,7 @@ fun SettingsScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "Heatmap Palette",
+            text = "Heatmap Colour Options",
             style = MaterialTheme.typography.titleMedium.copy(color = AccentCyan, letterSpacing = 1.sp),
             modifier = Modifier.padding(bottom = 12.dp)
         )
@@ -126,18 +126,6 @@ fun SettingsScreen(navController: NavController) {
                 .padding(20.dp)
         ) {
             Column {
-                Text(
-                    text = "Activity Matrix Gradient",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Choose professional gradient tones for activity boxes and streak indicators.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
                 Box(
                     modifier = Modifier.fillMaxWidth()
                 ) {

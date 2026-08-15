@@ -53,6 +53,8 @@ object BlockOverlayManager {
     fun showBlockScreen(context: Context, packageName: String, quote: String, mode: String) {
         if (isShowing && currentPackageName == packageName) return
 
+        com.focusbyrj.app.util.FocusStatsManager.addInterception(context)
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)) {
             val success = tryShowOverlay(context, packageName, quote, mode)
             if (success) return

@@ -31,6 +31,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -200,8 +201,6 @@ fun NormalDashboard(
 
             DeepWorkCard(timeRemaining = timeRemaining, onToggleSession = onToggleSession, onSetTime = onSetTime)
             Spacer(modifier = Modifier.height(12.dp))
-            DeviceStatsSection()
-            Spacer(modifier = Modifier.height(12.dp))
             StreakAndShieldedSection(restrictions = restrictions)
             Spacer(modifier = Modifier.height(12.dp))
             Spacer(modifier = Modifier.height(24.dp))
@@ -331,7 +330,7 @@ fun DeepWorkCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column {
                     Text(
-                        text = "DEEP WORK",
+                        text = "DEEP FOCUS",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 2.sp
@@ -369,155 +368,6 @@ fun DeepWorkCard(
     }
 }
 
-@Composable
-fun DeviceStatsSection() {
-    val context = LocalContext.current
-    val statsFlow = remember { DeviceStatsHelper.getBatteryStats(context) }
-    val initialBatteryInfo = remember {
-        com.focusbyrj.app.util.BatteryHealthInfo(
-            rawChargePercentage = 80,
-            maxCapacityHealthPercent = 88,
-            realRemainingCapacityPercent = 70.4f,
-            temperatureCelsius = 28.5f,
-            voltageMv = 3850,
-            healthStatusLabel = "Normal",
-            peakPerformanceStatus = "Your battery is currently supporting normal peak performance.",
-            isCharging = false
-        )
-    }
-    val stats by statsFlow.collectAsState(initial = initialBatteryInfo)
-    var showBatteryDetails by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth().height(120.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .background(SurfaceDark)
-                .border(1.dp, BorderGlass, RoundedCornerShape(20.dp))
-                .padding(16.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.DeviceThermostat, contentDescription = null, tint = AccentCyan, modifier = Modifier.size(24.dp))
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "${stats.temperatureCelsius}°C",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                Text("Temp", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(20.dp))
-                .background(SurfaceDark)
-                .border(1.dp, BorderGlass, RoundedCornerShape(20.dp))
-                .clickable { showBatteryDetails = true }
-                .padding(14.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.BatteryFull, contentDescription = null, tint = AccentViolet, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (stats.isCharging) "Charging" else "Real Capacity",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = String.format("%.1f%%", stats.realRemainingCapacityPercent),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                Text(
-                    text = "${stats.rawChargePercentage}% raw @ ${stats.maxCapacityHealthPercent}% health",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = AccentViolet,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-
-    if (showBatteryDetails) {
-        AlertDialog(
-            onDismissRequest = { showBatteryDetails = false },
-            containerColor = Color(0xFF1E1E2E),
-            confirmButton = {
-                TextButton(onClick = { showBatteryDetails = false }) {
-                    Text("Close", color = AccentCyan)
-                }
-            },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.BatteryFull, contentDescription = null, tint = AccentViolet)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Battery Health & Capacity", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "Maximum Capacity measures battery charge capability relative to factory original condition after chemical aging.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.LightGray
-                    )
-
-                    HorizontalDivider(color = BorderGlass)
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Real Battery Capacity:", style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(String.format("%.1f%%", stats.realRemainingCapacityPercent), style = MaterialTheme.typography.bodyMedium, color = AccentCyan, fontWeight = FontWeight.Bold)
-                    }
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Maximum Capacity (Health):", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                        Text("${stats.maxCapacityHealthPercent}%", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    }
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Raw Charge Level:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                        Text("${stats.rawChargePercentage}%", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    }
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Battery Condition:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                        Text(stats.healthStatusLabel, style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    }
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Voltage / Temperature:", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                        Text("${stats.voltageMv} mV / ${stats.temperatureCelsius}°C", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    }
-
-                    HorizontalDivider(color = BorderGlass)
-
-                    Text(
-                        "Peak Performance Capability:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = AccentViolet
-                    )
-                    Text(
-                        stats.peakPerformanceStatus,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.LightGray
-                    )
-                }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
-    }
-}
 
 @Composable
 fun ActiveSessionScreen(timeRemaining: Long, initialTime: Long, onToggleSession: () -> Unit) {
@@ -536,7 +386,7 @@ fun ActiveSessionScreen(timeRemaining: Long, initialTime: Long, onToggleSession:
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "DEEP WORK",
+                text = "DEEP FOCUS",
                 style = MaterialTheme.typography.labelMedium,
                 color = AccentCyan,
                 letterSpacing = 4.sp

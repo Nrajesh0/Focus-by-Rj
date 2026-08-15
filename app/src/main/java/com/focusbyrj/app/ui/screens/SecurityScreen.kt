@@ -92,7 +92,7 @@ fun SecurityScreen(navController: NavController) {
 
             SettingsCard(
                 title = "Uninstall Protection",
-                subtitle = "Uses Device Administrator to prevent accidental app deletion during deep work sessions.",
+                subtitle = "Uses Device Administrator to prevent accidental app deletion during deep focus sessions.",
                 icon = Icons.Filled.Security,
                 iconColor = Color(0xFFFFB74D) // Orange
             ) {
@@ -104,7 +104,7 @@ fun SecurityScreen(navController: NavController) {
                         } else {
                             val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
                                 putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-                                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Prevent accidental app deletion during deep work sessions.")
+                                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Prevent accidental app deletion during deep focus sessions.")
                             }
                             adminLauncher.launch(intent)
                         }

@@ -201,7 +201,7 @@ fun CreateRoutineScreen(
     onSave: (String, Int, Int, Int, Int, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
-    var name by remember { mutableStateOf(scheduleToEdit?.name ?: "Deep Work") }
+    var name by remember { mutableStateOf(scheduleToEdit?.name ?: "Deep Focus") }
     var startHour by remember { mutableStateOf(scheduleToEdit?.startHour ?: 9) }
     var startMinute by remember { mutableStateOf(scheduleToEdit?.startMinute ?: 0) }
     var endHour by remember { mutableStateOf(scheduleToEdit?.endHour ?: 17) }

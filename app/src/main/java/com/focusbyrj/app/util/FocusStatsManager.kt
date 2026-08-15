@@ -121,6 +121,9 @@ object FocusStatsManager {
     private val _themeFlow = MutableStateFlow(HeatmapTheme.EMERALD)
     val themeFlow: StateFlow<HeatmapTheme> = _themeFlow.asStateFlow()
 
+    private val _interceptionsFlow = MutableStateFlow(0)
+    val interceptionsFlow: StateFlow<Int> = _interceptionsFlow.asStateFlow()
+
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (!prefs.contains(KEY_INSTALL_TIME)) {
@@ -132,8 +135,19 @@ object FocusStatsManager {
 
         val themeId = prefs.getString(KEY_HEATMAP_THEME, HeatmapTheme.EMERALD.id)
         _themeFlow.value = HeatmapTheme.fromId(themeId)
+        
+        val interceptionKey = getDailyInterceptionKey(Calendar.getInstance())
+        _interceptionsFlow.value = prefs.getInt(interceptionKey, 0)
 
         refreshStats(context)
+    }
+
+    fun addInterception(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val key = getDailyInterceptionKey(Calendar.getInstance())
+        val currentCount = prefs.getInt(key, 0)
+        prefs.edit().putInt(key, currentCount + 1).apply()
+        _interceptionsFlow.value = currentCount + 1
     }
 
     fun setHeatmapTheme(context: Context, theme: HeatmapTheme) {
@@ -245,6 +259,10 @@ object FocusStatsManager {
 
     private fun getDailyKey(cal: Calendar): String {
         return "focus_day_${cal.get(Calendar.YEAR)}_${cal.get(Calendar.DAY_OF_YEAR)}"
+    }
+
+    private fun getDailyInterceptionKey(cal: Calendar): String {
+        return "interceptions_day_${cal.get(Calendar.YEAR)}_${cal.get(Calendar.DAY_OF_YEAR)}"
     }
 
     private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
