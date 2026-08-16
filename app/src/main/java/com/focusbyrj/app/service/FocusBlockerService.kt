@@ -264,36 +264,25 @@ class FocusBlockerService : Service() {
         }
 
         if (latestPackage != null) {
-            if (latestPackage == FocusExitTracker.lastExitedPackage && latestTime <= FocusExitTracker.exitTimestamp) {
-                return null
-            }
-            if (latestPackage != FocusExitTracker.lastExitedPackage) {
+            if (latestPackage == FocusExitTracker.lastExitedPackage) {
+                // Ignore ghost resume events that happen exactly when the overlay is removed
+                if (latestTime <= FocusExitTracker.exitTimestamp + 2000L) {
+                    return null
+                } else {
+                    FocusExitTracker.onNewForegroundAppDetected(latestPackage)
+                }
+            } else {
                 FocusExitTracker.onNewForegroundAppDetected(latestPackage)
             }
             currentForegroundPackage = latestPackage
             return latestPackage
         }
 
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, now - 1000 * 30, now)
-        if (!stats.isNullOrEmpty()) {
-            val mostRecent = stats.maxByOrNull { it.lastTimeUsed }
-            if (mostRecent != null && (now - mostRecent.lastTimeUsed) < 15000) {
-                val pkg = mostRecent.packageName
-                if (pkg == FocusExitTracker.lastExitedPackage && mostRecent.lastTimeUsed <= FocusExitTracker.exitTimestamp) {
-                    return null
-                }
-                if (pkg != FocusExitTracker.lastExitedPackage) {
-                    FocusExitTracker.onNewForegroundAppDetected(pkg)
-                }
-                currentForegroundPackage = pkg
-                return pkg
-            }
-        }
-
         if (FocusExitTracker.isExitSuppressed(currentForegroundPackage)) {
+            // User just exited to home, clear the cached package so we don't get stuck
+            currentForegroundPackage = null
             return null
         }
-
         return currentForegroundPackage
     }
 

@@ -1,2 +1,0 @@
-#!/bin/bash
-sed -i 's/context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))/if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {\n            context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)\n        } else {\n            context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))\n        }/g' app/src/main/java/com/focusbyrj/app/util/DeviceStatsHelper.kt
